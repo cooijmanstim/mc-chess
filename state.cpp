@@ -14,16 +14,17 @@ State::State()
   using namespace squares;
 
   board[white][pawn] = a2 | b2 | c2 | d2 | e2 | f2 | g2 | h2;
-  board[black][pawn] = a7 | b7 | c7 | d7 | e7 | f7 | g7 | h7;
   board[white][knight] = b1 | g1;
-  board[black][knight] = b8 | g8;
   board[white][bishop] = c1 | f1;
-  board[black][bishop] = c8 | f8;
   board[white][rook] = a1 | h1;
-  board[black][rook] = a8 | h8;
   board[white][queen] = d1;
-  board[black][queen] = d8;
   board[white][king] = e1;
+
+  board[black][pawn] = a7 | b7 | c7 | d7 | e7 | f7 | g7 | h7;
+  board[black][knight] = b8 | g8;
+  board[black][bishop] = c8 | f8;
+  board[black][rook] = a8 | h8;
+  board[black][queen] = d8;
   board[black][king] = e8;
 
   can_castle_kingside.fill(true);
@@ -61,8 +62,11 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
   };
 
   for (size_t i = 0; i < squares::cardinality; i++) {
+    o << ' ';
+
     // bit index with rank flipped
-    size_t j = ((7 - (i >> 3)) << 3) + (i & ((1<<3)-1));
+    size_t j = ((7 - (i >> 3)) << 3) + (i & 7);
+
     Bitboard square = Bitboard(1)<<j;
     bool piece_found = false;
     for (Color c: colors::values) {
@@ -76,9 +80,13 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
         }
       }
     }
-  }
 
-  o << std::endl;
+    if (!piece_found)
+      o << '.';
+
+    if ((i + 1) % 8 == 0)
+      o << std::endl;
+  }
 
   o << colors::name(s.color_to_move) << " to move. ";
 

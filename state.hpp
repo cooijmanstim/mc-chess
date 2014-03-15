@@ -9,7 +9,7 @@
 #include "bitboard.hpp"
 
 class State {
-  array2d<Bitboard, pieces::cardinality, colors::cardinality> board;
+  array2d<Bitboard, colors::cardinality, pieces::cardinality> board;
 
   // false iff the relevant rook or king has moved.
   std::array<bool, colors::cardinality> can_castle_kingside, can_castle_queenside;
@@ -20,6 +20,7 @@ class State {
 
   Color color_to_move;
 
+public:
   State();
   ~State();
   State(State &that);
