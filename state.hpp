@@ -8,10 +8,10 @@
 #include "bitboard.hpp"
 
 class State {
-  std::array<std::array<Bitboard, pieces.cardinality>, colors.cardinality> board;
+  std::array<std::array<Bitboard, pieces::cardinality>, colors::cardinality> board;
 
   // false iff the relevant rook or king has moved.
-  std::array<bool, colors.cardinality> can_castle_kingside, can_castle_queenside;
+  std::array<bool, colors::cardinality> can_castle_kingside, can_castle_queenside;
 
   // if en-passant capture is possible, this is the square where a capturing
   // pawn will end up.

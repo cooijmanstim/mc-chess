@@ -24,13 +24,13 @@ State::State(State &that) :
 
 State::~State() {}
 
-bool State::operation==(State &that) {
+bool State::operator==(State &that) {
   if (this == &that)
     return true;
   
   return this->color_to_move == that.color_to_move &&
-  this->en_passant_square == that.en_passant_square &&
-  this->can_castle_kingside == that.can_castle_kingside &&
-  this->can_castle_queenside == that.can_castle_queenside &&
-  this->board == that->board;
+         this->en_passant_square == that.en_passant_square &&
+         this->can_castle_kingside == that.can_castle_kingside &&
+         this->can_castle_queenside == that.can_castle_queenside &&
+         this->board == that.board;
 }

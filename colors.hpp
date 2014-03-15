@@ -3,12 +3,12 @@
 #include <cstddef>
 
 namespace colors {
-#define COLORS White, Black,
+#define COLORS white, black,
   enum Color { COLORS };
   const Color values[] = { COLORS };
 #undef COLORS
 
-  const std::size_t cardinality = sizeof(values) / sizeof(Color);
+  const size_t cardinality = sizeof(values) / sizeof(Color);
 }
 
 typedef enum colors::Color Color;

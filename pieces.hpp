@@ -1,7 +1,7 @@
 #pragma once
 
 namespace pieces {
-#define PIECE_TYPES Pawn, Knight, Bishop, Rook, Queen, King,
+#define PIECE_TYPES pawn, knight, bishop, rook, queen, king,
   enum Piece { PIECE_TYPES };
   const Piece values[] = { PIECE_TYPES };
 #undef PIECE_TYPES
