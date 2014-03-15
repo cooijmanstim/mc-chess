@@ -53,3 +53,44 @@ bool State::operator==(State &that) {
          this->can_castle_queenside == that.can_castle_queenside &&
          this->board == that.board;
 }
+
+std::ostream& operator<<(std::ostream& o, const State& s) {
+  array2d<char, colors::cardinality, pieces::cardinality> symbols = {
+    'p', 'n', 'b', 'r', 'q', 'k',
+    'P', 'N', 'B', 'R', 'Q', 'K',
+  };
+
+  for (size_t i = 0; i < squares::cardinality; i++) {
+    // bit index with rank flipped
+    size_t j = ((7 - (i >> 3)) << 3) + (i & ((1<<3)-1));
+    Bitboard square = Bitboard(1)<<j;
+    bool piece_found = false;
+    for (Color c: colors::values) {
+      for (Piece p: pieces::values) {
+        if (s.board[c][p] & square) {
+          o << symbols[c][p];
+
+          // take this opportunity to ensure no two pieces are on the same square
+          assert(!piece_found);
+          piece_found = true;
+        }
+      }
+    }
+  }
+
+  o << std::endl;
+
+  o << colors::name(s.color_to_move) << " to move. ";
+
+  o << " castling rights: ";
+  if (s.can_castle_kingside [colors::white]) o << "k";
+  if (s.can_castle_queenside[colors::white]) o << "q";
+  if (s.can_castle_kingside [colors::black]) o << "K";
+  if (s.can_castle_queenside[colors::black]) o << "Q";
+
+  if (s.en_passant_square)
+    o << " en-passant square: " << squares::name_from_bitboard(*s.en_passant_square);
+
+  o << std::endl;
+  return o;
+}

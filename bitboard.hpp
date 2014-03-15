@@ -3,4 +3,3 @@
 #include <cstdint>
 
 typedef uint64_t Bitboard;
-

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <cstddef>
 
 namespace colors {
@@ -9,6 +10,8 @@ namespace colors {
 #undef COLORS
 
   const size_t cardinality = sizeof(values) / sizeof(Color);
+
+  std::string name(Color color);
 }
 
 typedef enum colors::Color Color;

@@ -1,7 +1,13 @@
 #pragma once
 
+#include <string>
+#include <cassert>
+
+#include "bitboard.hpp"
+
 namespace squares {
-#define _(i) uint64_t(1)<<(i)
+  const size_t cardinality = 64;
+#define _(i) Bitboard(1)<<(i)
   const Bitboard a1 = _( 0), b1 = _( 1), c1 = _( 2), d1 = _( 3), e1 = _( 4), f1 = _( 5), g1 = _( 6), h1 = _( 7),
                  a2 = _( 8), b2 = _( 9), c2 = _(10), d2 = _(11), e2 = _(12), f2 = _(13), g2 = _(14), h2 = _(15),
                  a3 = _(16), b3 = _(17), c3 = _(18), d3 = _(19), e3 = _(20), f3 = _(21), g3 = _(22), h3 = _(23),
@@ -11,4 +17,7 @@ namespace squares {
                  a7 = _(48), b7 = _(49), c7 = _(50), d7 = _(51), e7 = _(52), f7 = _(53), g7 = _(54), h7 = _(55),
                  a8 = _(56), b8 = _(57), c8 = _(58), d8 = _(59), e8 = _(60), f8 = _(61), g8 = _(62), h8 = _(63);
 #undef _
+
+  std::string name_from_bitboard(Bitboard b);
 }
+
