@@ -16,7 +16,7 @@ class State {
 
   // if en-passant capture is possible, this is the square where a capturing
   // pawn will end up.
-  boost::optional<Bitboard> en_passant_square;
+  Bitboard en_passant_square;
 
   Color color_to_move;
 

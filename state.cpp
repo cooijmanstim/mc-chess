@@ -31,6 +31,8 @@ State::State()
   can_castle_queenside.fill(true);
 
   color_to_move = colors::white;
+
+  en_passant_square = 0;
 }
 
 State::State(State &that) :
@@ -96,9 +98,23 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
   if (s.can_castle_kingside [colors::black]) o << "K";
   if (s.can_castle_queenside[colors::black]) o << "Q";
 
-  if (s.en_passant_square)
-    o << " en-passant square: " << squares::name_from_bitboard(*s.en_passant_square);
+  if (s.en_passant_square != 0)
+    o << " en-passant square: " << squares::name_from_bitboard(s.en_passant_square);
 
   o << std::endl;
   return o;
+}
+
+vector<Move> State::moves() {
+  using namespace pieces;
+  using namespace directions;
+  using namespace bitboards;
+
+  // TODO: make monochrome so this is always true
+  Color our = colors::white, their = colors::black;
+
+  // TODO: occupancy
+  Bitboard empty = ~(occupancy[our] | occupancy[their]);
+
+  // TODO: find targets
 }
