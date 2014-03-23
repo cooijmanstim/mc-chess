@@ -116,5 +116,8 @@ vector<Move> State::moves() {
   // TODO: occupancy
   Bitboard empty = ~(occupancy[our] | occupancy[their]);
 
-  // TODO: find targets
+  // TODO: maybe reserve()
+  std::vector<Move> moves;
+
+  
 }

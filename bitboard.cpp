@@ -1,22 +1,32 @@
 #include "bitboard.hpp"
 
-SquareIndex bitboard::scan_forward(Bitboard b) {
+squares::Index bitboard::scan_forward(Bitboard b) {
   assert(b != 0);
   return __builtin_ffsll(b) - 1;
 }
 
-SquareIndex bitboard::scan_forward_with_reset(Bitboard& b) {
+squares::Index bitboard::scan_forward_with_reset(Bitboard& b) {
   size_t index = scan_forward(b);
   b &= b - 1;
   return index;
 }
 
-SquareIndex bitboard::squares::index_from_bitboard(Bitboard b) {
+bool bitboard::is_empty(Bitboard b) {
+  return b == 0;
+}
+
+void bitboard::for_each_member(Bitboard b, std::function<void(squares::Index) f) {
+  while (!is_empty(b)) {
+    f(scan_forward_with_reset(b));
+  }
+}
+
+squares::Index squares::index_from_bitboard(Bitboard b) {
   // assumption that exactly one bit is set
   return scan_forward(b);
 }
 
-std::string bitboard::squares::name_from_bitboard(Bitboard b) {
+std::string squares::name_from_bitboard(Bitboard b) {
   // ensure at least one bit set
   assert(b != 0);
 
