@@ -1,42 +1,37 @@
 #pragma once
 
+#include <string>
+#include <vector>
+#include <iostream>
+
 #include "bitboard.hpp"
+#include "board.hpp"
+#include "pieces.hpp"
 
 class Move {
   const uint16_t move;
   static const size_t nbits_type = 4, nbits_from = 6, nbits_to = 6;
   static const size_t offset_type = 0, offset_from = offset_type + nbits_type, offset_to = offset_from + nbits_from;
 
+public:
   // NOTE: at most 16!
-  namespace types {
-    enum Type {
-      normal,
-      double_push,
-      castle_kingside,
-      castle_queenside,
-      promotion_knight,
-      promotion_bishop,
-      promotion_rook,
-      promotion_queen,
-    };
+  enum class Type {
+    normal,
+    double_push,
+    castle_kingside,
+    castle_queenside,
+    promotion_knight,
+    promotion_bishop,
+    promotion_rook,
+    promotion_queen,
+  };
 
-    std::string names[] = {
-      "normal",
-      "double_push",
-      "castle_kingside",
-      "castle_queenside",
-      "promotion_knight",
-      "promotion_bishop",
-      "promotion_rook",
-      "promotion_queen",
-    };
-  }
-  typedef types::Type Type;
+  static std::string typename_from_type(Type type);
 
-  Move(squares::Index from, squares::Index to, int type);
+  Move(squares::Index from, squares::Index to, Type type);
   Move(const Move& that);
 
-  squares::Index type() const;
+  Type type() const;
   squares::Index from() const;
   squares::Index to  () const;
 
@@ -45,38 +40,35 @@ class Move {
   bool operator< (const Move& that) const; // used for std::set in tests
 
   friend std::ostream& operator<<(std::ostream& o, const Move& b);
-}
+};
+
 
 namespace moves {
-  Bitboard moves::pawn_attacks_w(Bitboard pawn);
-  Bitboard moves::pawn_attacks_e(Bitboard pawn);
-  Bitboard moves::knight_attacks_nnw(Bitboard knight);
-  Bitboard moves::knight_attacks_ssw(Bitboard knight);
-  Bitboard moves::knight_attacks_nww(Bitboard knight);
-  Bitboard moves::knight_attacks_sww(Bitboard knight);
-  Bitboard moves::knight_attacks_nne(Bitboard knight);
-  Bitboard moves::knight_attacks_sse(Bitboard knight);
-  Bitboard moves::knight_attacks_nee(Bitboard knight);
-  Bitboard moves::knight_attacks_see(Bitboard knight);
-  Bitboard moves::bishop_attacks(Bitboard occupancy, squares::Index source);
-  Bitboard moves::rook_attacks(Bitboard occupancy, squares::Index source);
-  Bitboard moves::queen_attacks(Bitboard occupancy, squares::Index source);
-  Bitboard moves::king_attacks(Bitboard king);
+  Bitboard pawn_attacks_w(Bitboard pawn);
+  Bitboard pawn_attacks_e(Bitboard pawn);
+  Bitboard knight_attacks_nnw(Bitboard knight);
+  Bitboard knight_attacks_ssw(Bitboard knight);
+  Bitboard knight_attacks_nww(Bitboard knight);
+  Bitboard knight_attacks_sww(Bitboard knight);
+  Bitboard knight_attacks_nne(Bitboard knight);
+  Bitboard knight_attacks_sse(Bitboard knight);
+  Bitboard knight_attacks_nee(Bitboard knight);
+  Bitboard knight_attacks_see(Bitboard knight);
+  Bitboard bishop_attacks(Bitboard occupancy, squares::Index source);
+  Bitboard rook_attacks(Bitboard occupancy, squares::Index source);
+  Bitboard queen_attacks(Bitboard occupancy, squares::Index source);
+  Bitboard king_attacks(Bitboard king);
   
-  Bitboard moves::all_attacks(Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
-  bool moves::is_attacked(Bitboard targets, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
+  Bitboard all_attacks(Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
+  bool is_attacked(Bitboard targets, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
   
-  void moves::pawn_single_push(std::vector<Move>& moves, Bitboard pawn, Bitboard empty);
-  void moves::pawn_double_push(std::vector<Move>& moves, Bitboard pawn, Bitboard empty);
-  void moves::pawn_capture_w(std::vector<Move>& moves, Bitboard pawn, Bitboard them, Bitboard en_passant_square);;
-  void moves::pawn_capture_e(std::vector<Move>& moves, Bitboard pawn, Bitboard them, Bitboard en_passant_square);
-  void moves::knight(std::vector<Move>& moves, Bitboard knight);
-  void moves::bishop(std::vector<Move>& moves, Bitboard occupancy, squares::Index source);
-  void moves::rook(std::vector<Move>& moves, Bitboard occupancy, squares::Index source);
-  void moves::queen(std::vector<Move>& moves, Bitboard occupancy, squares::Index source);
-  void moves::king(std::vector<Move>& moves, Bitboard king);
-  void moves::castle_kingside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
-  void moves::castle_queenside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
-
-  void moves::all_moves(std::vector<Move>& moves, Bitboard occupancy, array2d<Bitboard, colors::cardinality, pieces::cardinality> board);
+  void pawn(std::vector<Move>& moves, Bitboard pawn, Bitboard us, Bitboard them, Bitboard en_passant_square);
+  void knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitboard them);
+  void bishop(std::vector<Move>& moves, Bitboard bishop, Bitboard us, Bitboard them);
+  void rook(std::vector<Move>& moves, Bitboard rook, Bitboard us, Bitboard them);
+  void queen(std::vector<Move>& moves, Bitboard queen, Bitboard us, Bitboard them);
+  void king(std::vector<Move>& moves, Bitboard king, Bitboard us, Bitboard them);
+  void castle_kingside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
+  void castle_queenside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
+  void all_moves(std::vector<Move>& moves, Board board, Bitboard en_passant_square);
 }

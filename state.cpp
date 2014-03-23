@@ -1,5 +1,4 @@
 #include "state.hpp"
-#include "squares.hpp"
 
 State::State()
 {
@@ -13,14 +12,14 @@ State::State()
   using namespace pieces;
   using namespace squares;
 
-  board[white][pawn] = a2 | b2 | c2 | d2 | e2 | f2 | g2 | h2;
+  board[white][pawn] = ranks::_2;
   board[white][knight] = b1 | g1;
   board[white][bishop] = c1 | f1;
   board[white][rook] = a1 | h1;
   board[white][queen] = d1;
   board[white][king] = e1;
 
-  board[black][pawn] = a7 | b7 | c7 | d7 | e7 | f7 | g7 | h7;
+  board[black][pawn] = ranks::_7;
   board[black][knight] = b8 | g8;
   board[black][bishop] = c8 | f8;
   board[black][rook] = a8 | h8;
@@ -105,7 +104,7 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
   return o;
 }
 
-vector<Move> State::moves() {
+std::vector<Move> State::moves() {
   // NOTE: move generation always generates from white's perspective. modify board accordingly.
 
   // TODO: maybe reserve()

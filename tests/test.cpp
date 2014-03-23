@@ -6,7 +6,7 @@
 #include <algorithm>
 
 #include "state.hpp"
-#include "move.hpp"
+#include "moves.hpp"
 
 BOOST_AUTO_TEST_CASE(initial_moves) {
   State state;

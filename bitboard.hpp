@@ -2,12 +2,15 @@
 
 #include <cstdint>
 #include <array>
+#include <functional>
+
+#include "direction.hpp"
 
 typedef uint64_t Bitboard;
 
 namespace squares {
   const size_t cardinality = 64;
-    
+
 #define _(i) Bitboard(1)<<(i)
   const Bitboard a1 = _( 0), b1 = _( 1), c1 = _( 2), d1 = _( 3), e1 = _( 4), f1 = _( 5), g1 = _( 6), h1 = _( 7),
                  a2 = _( 8), b2 = _( 9), c2 = _(10), d2 = _(11), e2 = _(12), f2 = _(13), g2 = _(14), h2 = _(15),
@@ -28,21 +31,32 @@ namespace squares {
   }();
 #undef _
   
-  std::string name_from_bitboard(Bitboard b);
+  std::string name_from_index(squares::Index i);
   Index index_from_bitboard(Bitboard b);
+  std::string name_from_bitboard(Bitboard b);
+}
+
+namespace bitboard {
+  squares::Index scan_forward(Bitboard b);
+  squares::Index scan_forward_with_reset(Bitboard& b);
+  bool is_empty(Bitboard b);
+  void for_each_member(Bitboard b, std::function<void(squares::Index)> f);
 }
 
 namespace files {
   const size_t cardinality = 8;
 
-  const Bitboard a = 0x0101010101010101 << 0*east,
-                 b = 0x0101010101010101 << 1*east,
-                 c = 0x0101010101010101 << 2*east,
-                 d = 0x0101010101010101 << 3*east,
-                 e = 0x0101010101010101 << 4*east,
-                 f = 0x0101010101010101 << 5*east,
-                 g = 0x0101010101010101 << 6*east,
-                 h = 0x0101010101010101 << 7*east;
+  using namespace directions;
+#define MAINFILE Bitboard(0x0101010101010101)
+  const Bitboard a = MAINFILE << 0*east,
+                 b = MAINFILE << 1*east,
+                 c = MAINFILE << 2*east,
+                 d = MAINFILE << 3*east,
+                 e = MAINFILE << 4*east,
+                 f = MAINFILE << 5*east,
+                 g = MAINFILE << 6*east,
+                 h = MAINFILE << 7*east;
+#undef MAINFILE
 
   const std::array<Bitboard, squares::cardinality> bySquareIndex = [](){
     std::array<Bitboard, squares::cardinality> bySquareIndex;
@@ -56,14 +70,17 @@ namespace files {
 namespace ranks {
   const size_t cardinality = 8;
 
-  const Bitboard _1 = 0x00000000000000FF << 0*north,
-                 _2 = 0x00000000000000FF << 1*north,
-                 _3 = 0x00000000000000FF << 2*north,
-                 _4 = 0x00000000000000FF << 3*north,
-                 _5 = 0x00000000000000FF << 4*north,
-                 _6 = 0x00000000000000FF << 5*north,
-                 _7 = 0x00000000000000FF << 6*north,
-                 _8 = 0x00000000000000FF << 7*north;
+  using namespace directions;
+#define MAINRANK Bitboard(0x00000000000000FF)
+  const Bitboard _1 = MAINRANK << 0*north,
+                 _2 = MAINRANK << 1*north,
+                 _3 = MAINRANK << 2*north,
+                 _4 = MAINRANK << 3*north,
+                 _5 = MAINRANK << 4*north,
+                 _6 = MAINRANK << 5*north,
+                 _7 = MAINRANK << 6*north,
+                 _8 = MAINRANK << 7*north;
+#undef MAINRANK
 
   const std::array<Bitboard, squares::cardinality> bySquareIndex = [](){
     std::array<Bitboard, squares::cardinality> bySquareIndex;
@@ -77,7 +94,8 @@ namespace ranks {
 namespace diagonals {
   const size_t cardinality = 18;
 
-#define MAINDIAG = 0x8040201008040201
+  using namespace directions;
+#define MAINDIAG Bitboard(0x8040201008040201)
   const Bitboard _8 = MAINDIAG << 7*north,
                  _7 = MAINDIAG << 6*north,
                  _6 = MAINDIAG << 5*north,
@@ -86,22 +104,23 @@ namespace diagonals {
                  _3 = MAINDIAG << 2*north,
                  _2 = MAINDIAG << 1*north,
                  _1 = MAINDIAG << 0*north,
-                 a  = MAINDIAG << 0*south,
-                 b  = MAINDIAG << 1*south,
-                 c  = MAINDIAG << 2*south,
-                 d  = MAINDIAG << 3*south,
-                 e  = MAINDIAG << 4*south,
-                 f  = MAINDIAG << 5*south,
-                 g  = MAINDIAG << 6*south,
-                 h  = MAINDIAG << 7*south;
+                 a  = MAINDIAG >> 0*north,
+                 b  = MAINDIAG >> 1*north,
+                 c  = MAINDIAG >> 2*north,
+                 d  = MAINDIAG >> 3*north,
+                 e  = MAINDIAG >> 4*north,
+                 f  = MAINDIAG >> 5*north,
+                 g  = MAINDIAG >> 6*north,
+                 h  = MAINDIAG >> 7*north;
 #undef MAINDIAG
 
   const std::array<Bitboard, squares::cardinality> bySquareIndex = [](){
     std::array<Bitboard, squares::cardinality> bySquareIndex;
     std::array<Bitboard, cardinality> diagonals = {_8,_7,_6,_5,_4,_3,_2,_1,a,b,c,d,e,f,g,h};
     for (size_t i = 0; i < cardinality; i++) {
-      for (SquareIndex j: bits_set(diagonals[i]))
-        bySquareIndex[j] = diagonals[i];
+      bitboard::for_each_member(diagonals[i], [&bySquareIndex, &diagonals, i](squares::Index j) {
+          bySquareIndex[j] = diagonals[i];
+        });
     }
     return bySquareIndex;
   }();
@@ -110,7 +129,8 @@ namespace diagonals {
 namespace antidiagonals {
   const size_t cardinality = 18;
 
-#define MAINDIAG = 0x0102040810204080
+  using namespace directions;
+#define MAINDIAG Bitboard(0x0102040810204080)
   const Bitboard h  = MAINDIAG << 7*north,
                  g  = MAINDIAG << 6*north,
                  f  = MAINDIAG << 5*north,
@@ -119,30 +139,25 @@ namespace antidiagonals {
                  c  = MAINDIAG << 2*north,
                  b  = MAINDIAG << 1*north,
                  a  = MAINDIAG << 0*north,
-                 _8 = MAINDIAG << 0*south,
-                 _7 = MAINDIAG << 1*south,
-                 _6 = MAINDIAG << 2*south,
-                 _5 = MAINDIAG << 3*south,
-                 _4 = MAINDIAG << 4*south,
-                 _3 = MAINDIAG << 5*south,
-                 _2 = MAINDIAG << 6*south,
-                 _1 = MAINDIAG << 7*south;
+                 _8 = MAINDIAG >> 0*north,
+                 _7 = MAINDIAG >> 1*north,
+                 _6 = MAINDIAG >> 2*north,
+                 _5 = MAINDIAG >> 3*north,
+                 _4 = MAINDIAG >> 4*north,
+                 _3 = MAINDIAG >> 5*north,
+                 _2 = MAINDIAG >> 6*north,
+                 _1 = MAINDIAG >> 7*north;
 #undef MAINDIAG
 
   const std::array<Bitboard, squares::cardinality> bySquareIndex = [](){
     std::array<Bitboard, squares::cardinality> bySquareIndex;
     std::array<Bitboard, cardinality> diagonals = {_8,_7,_6,_5,_4,_3,_2,_1,a,b,c,d,e,f,g,h};
     for (size_t i = 0; i < cardinality; i++) {
-      for (SquareIndex j: bits_set(diagonals[i]))
-        bySquareIndex[j] = diagonals[i];
+      bitboard::for_each_member(diagonals[i], [&bySquareIndex, &diagonals, i](squares::Index j) {
+          bySquareIndex[j] = diagonals[i];
+        });
     }
     return bySquareIndex;
   }();
 }
 
-namespace bitboard {
-  squares::Index scan_forward(Bitboard b);
-  squares::Index scan_forward_with_reset(Bitboard b);
-  bool is_empty(Bitboard b);
-  void for_each_member(Bitboard b, std::function<void(squares::Index) f);
-}

@@ -6,10 +6,12 @@
 #include "util.hpp"
 #include "colors.hpp"
 #include "pieces.hpp"
+#include "board.hpp"
 #include "bitboard.hpp"
+#include "moves.hpp"
 
 class State {
-  array2d<Bitboard, colors::cardinality, pieces::cardinality> board;
+  Board board;
 
   // false iff the relevant rook or king has moved.
   std::array<bool, colors::cardinality> can_castle_kingside, can_castle_queenside;
@@ -27,5 +29,7 @@ public:
   bool operator==(State &that);
 
   friend std::ostream& operator<<(std::ostream& o, const State& b);
+
+  std::vector<Move> moves();
 };
 
