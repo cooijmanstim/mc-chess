@@ -106,18 +106,10 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
 }
 
 vector<Move> State::moves() {
-  using namespace pieces;
-  using namespace directions;
-  using namespace bitboards;
-
-  // TODO: make monochrome so this is always true
-  Color our = colors::white, their = colors::black;
-
-  // TODO: occupancy
-  Bitboard empty = ~(occupancy[our] | occupancy[their]);
+  // NOTE: move generation always generates from white's perspective. modify board accordingly.
 
   // TODO: maybe reserve()
   std::vector<Move> moves;
-
-  
+  moves::all_moves(moves, board, en_passant_square);
+  return moves;
 }

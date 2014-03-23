@@ -4,18 +4,46 @@
 
 class Move {
   const uint16_t move;
-  static const size_t nbits_flags = 4, nbits_from = 6, nbits_to = 6;
-  static const size_t offset_flags = 0, offset_from = offset_flags + nbits_flags, offset_to = offset_from + nbits_from;
+  static const size_t nbits_type = 4, nbits_from = 6, nbits_to = 6;
+  static const size_t offset_type = 0, offset_from = offset_type + nbits_type, offset_to = offset_from + nbits_from;
 
-  Move(squares::Index from, squares::Index to, int flags);
+  // NOTE: at most 16!
+  namespace types {
+    enum Type {
+      normal,
+      double_push,
+      castle_kingside,
+      castle_queenside,
+      promotion_knight,
+      promotion_bishop,
+      promotion_rook,
+      promotion_queen,
+    };
+
+    std::string names[] = {
+      "normal",
+      "double_push",
+      "castle_kingside",
+      "castle_queenside",
+      "promotion_knight",
+      "promotion_bishop",
+      "promotion_rook",
+      "promotion_queen",
+    };
+  }
+  typedef types::Type Type;
+
+  Move(squares::Index from, squares::Index to, int type);
   Move(const Move& that);
 
-  squares::Index flags() const;
-  squares::Index from () const;
-  squares::Index to   () const;
+  squares::Index type() const;
+  squares::Index from() const;
+  squares::Index to  () const;
 
   bool operator==(const Move& that) const;
   bool operator!=(const Move& that) const;
+
+  friend std::ostream& operator<<(std::ostream& o, const Move& b);
 }
 
 namespace moves {
@@ -49,7 +77,5 @@ namespace moves {
   void moves::castle_kingside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
   void moves::castle_queenside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
 
-  void moves::all_moves(std::vector<Move>& moves, Bitboard occupancy,
-                        std::array<Bitboard, pieces::cardinality> us,
-                        std::array<Bitboard, pieces::cardinality> them);
+  void moves::all_moves(std::vector<Move>& moves, Bitboard occupancy, array2d<Bitboard, colors::cardinality, pieces::cardinality> board);
 }

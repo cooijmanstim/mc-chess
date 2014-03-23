@@ -1,8 +1,10 @@
 #include "moves.hpp"
 
+// routines for generating moves for White.  flip the bitboards vertically and swap ownership
+// to make them applicable for Black.
 
-Move::Move(squares::Index from, squares::Index to, int flags) :
-  move((flags << offset_flags) | (from << offset_from) | (to << offset_to))
+Move::Move(squares::Index from, squares::Index to, int type) :
+  move((type << offset_type) | (from << offset_from) | (to << offset_to))
 {
 }
 
@@ -11,9 +13,9 @@ Move::Move(const Move& that) :
 {
 }
 
-squares::Index Move::flags() const { return (move >> offset_flags) & ((1 << nbits_flags) - 1); }
-squares::Index Move::from () const { return (move >> offset_from)  & ((1 << nbits_from)  - 1); }
-squares::Index Move::to   () const { return (move >> offset_to)    & ((1 << nbits_to)    - 1); }
+squares::Index Move::type() const { return (move >> offset_type) & ((1 << nbits_type) - 1); }
+squares::Index Move::from() const { return (move >> offset_from) & ((1 << nbits_from) - 1); }
+squares::Index Move::to  () const { return (move >> offset_to)   & ((1 << nbits_to)   - 1); }
 
 bool Move::operator==(const Move& that) const { return this->move == that.move; }
 bool Move::operator!=(const Move& that) const { return this->move != that.move; }
@@ -102,61 +104,73 @@ void moves_from_targets(std::vector<Move>& moves, Bitboard targets, int source, 
     });
 }
 
-void moves::pawn_single_push(std::vector<Move>& moves, Bitboard pawn, Bitboard empty) {
+void moves::pawn(std::vector<Move>& moves, Bitboard pawn, Bitboard us, Bitboard them, Bitboard en_passant_square) {
+  Bitboard empty = ~(us | them);
+
+  // single push
   bitboard::for_each_member((pawn << north) & empty,
                             [&moves](squares::Index target) {
                               if (ranks::bySquareIndex[target] == ranks::_8) {
-                                for (Move::Flag promotion: {Move::flags::promotion_knight,
-                                      Move::flags::promotion_bishop,
-                                      Move::flags::promotion_rook,
-                                      Move::flags::promotion_queen}) {
-                                  moves.push_back(Move(target + directions::south, target, promotion));
+                                for (Move::Type promotion: {Move::types::promotion_knight,
+                                                            Move::types::promotion_bishop,
+                                                            Move::types::promotion_rook,
+                                                            Move::types::promotion_queen}) {
+                                  moves.push_back(Move(target + directions::south,
+                                                       target,
+                                                       promotion));
                                 }
                               } else {
-                                moves.push_back(Move(target + directions::south, target));
+                                moves.push_back(Move(target + directions::south,
+                                                     target));
                               }
                             });
+
+  // double push
+  bitboard::for_each_member((pawn << 2*north) & empty,
+                            [&moves](squares::Index target) {
+                              moves.push_back(Move(target + 2*directions::south,
+                                                   target,
+                                                   Move::types::double_push));
+                            });
+
+  // captures
+  moves_from_targets(moves, pawn_attacks_w(pawn) & (them | en_passant_square),
+                     directions::south + directions::east, relative);
+  moves_from_targets(moves, pawn_attacks_e(pawn) & (them | en_passant_square),
+                     directions::south + directions::west, relative);
 }
 
-void moves::pawn_double_push(std::vector<Move>& moves, Bitboard pawn, Bitboard empty) {
-  bitboard::for_each_member((pawn << 2*north) & empty, [&moves](squares::Index target) {
-      moves.push_back(Move(target + 2*directions::south, target, Move::flags::double_push));
+void moves::knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitboard them) {
+  moves_from_targets(moves, knight_attacks_nnw(knight) & ~us, 2*directions::south + directions::east,  relative);
+  moves_from_targets(moves, knight_attacks_ssw(knight) & ~us, 2*directions::north + directions::east,  relative);
+  moves_from_targets(moves, knight_attacks_nww(knight) & ~us, 2*directions::east  + directions::south, relative);
+  moves_from_targets(moves, knight_attacks_sww(knight) & ~us, 2*directions::east  + directions::north, relative);
+  moves_from_targets(moves, knight_attacks_nne(knight) & ~us, 2*directions::south + directions::west,  relative);
+  moves_from_targets(moves, knight_attacks_sse(knight) & ~us, 2*directions::north + directions::west,  relative);
+  moves_from_targets(moves, knight_attacks_nee(knight) & ~us, 2*directions::west  + directions::south, relative);
+  moves_from_targets(moves, knight_attacks_see(knight) & ~us, 2*directions::west  + directions::north, relative);
+}
+
+void moves::bishop(std::vector<Move>& moves, Bitboard bishop, Bitboard us, Bitboard them) {
+  for_each_member(bishop, [&moves, us, them](squares::Index source) {
+      moves_from_targets(moves, bishop_attacks(us | them, source) & ~us, source, absolute);
     });
 }
 
-void moves::pawn_capture_w(std::vector<Move>& moves, Bitboard pawn, Bitboard them, Bitboard en_passant_square) {
-  moves_from_targets(moves, pawn_attacks_w(pawn) & (them | en_passant_square), directions::south + directions::east, relative);
+void moves::rook(std::vector<Move>& moves, Bitboard rook, Bitboard us, Bitboard them) {
+  for_each_member(rook, [&moves, us, them](squares::Index source) {
+      moves_from_targets(moves, rook_attacks(us | them, source) & ~us, source, absolute);
+  });
 }
 
-void moves::pawn_capture_e(std::vector<Move>& moves, Bitboard pawn, Bitboard them, Bitboard en_passant_square) {
-  moves_from_targets(moves, pawn_attacks_e(pawn) & (them | en_passant_square), directions::south + directions::west, relative);
+void moves::queen(std::vector<Move>& moves, Bitboard queen, Bitboard us, Bitboard them) {
+  for_each_member(queen, [&moves, us, them](squares::Index source) {
+      moves_from_targets(moves, queen_attacks(us | them, source) & ~us, source, absolute);
+    });
 }
 
-void moves::knight(std::vector<Move>& moves, Bitboard knight) {
-  moves_from_targets(moves, knight_attacks_nnw(knight), 2*directions::south + directions::east,  relative);
-  moves_from_targets(moves, knight_attacks_ssw(knight), 2*directions::north + directions::east,  relative);
-  moves_from_targets(moves, knight_attacks_nww(knight), 2*directions::east  + directions::south, relative);
-  moves_from_targets(moves, knight_attacks_sww(knight), 2*directions::east  + directions::north, relative);
-  moves_from_targets(moves, knight_attacks_nne(knight), 2*directions::south + directions::west,  relative);
-  moves_from_targets(moves, knight_attacks_sse(knight), 2*directions::north + directions::west,  relative);
-  moves_from_targets(moves, knight_attacks_nee(knight), 2*directions::west  + directions::south, relative);
-  moves_from_targets(moves, knight_attacks_see(knight), 2*directions::west  + directions::north, relative);
-}
-
-void moves::bishop(std::vector<Move>& moves, Bitboard occupancy, squares::Index source) {
-  moves_from_targets(moves, bishop_attacks(occupancy, source), source, absolute);
-}
-
-void moves::rook(std::vector<Move>& moves, Bitboard occupancy, squares::Index source) {
-  moves_from_targets(moves, rook_attacks(occupancy, source), source, absolute);
-}
-
-void moves::queen(std::vector<Move>& moves, Bitboard occupancy, squares::Index source) {
-  moves_from_targets(moves, queen_attacks(occupancy, source), source, absolute);
-}
-
-void moves::king(std::vector<Move>& moves, Bitboard king) {
-  moves_from_targets(moves, king_attacks(king), squares::index_from_bitboard(king), absolute);
+void moves::king(std::vector<Move>& moves, Bitboard king, Bitboard us) {
+  moves_from_targets(moves, king_attacks(king) & ~us, squares::index_from_bitboard(king), absolute);
 }
 
 
@@ -164,11 +178,43 @@ void moves::king(std::vector<Move>& moves, Bitboard king) {
 void moves::castle_kingside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers) {
   using namespace squares;
   if (!is_attacked(e1 | f1 | g1, occupancy, attackers))
-    moves.push_back(Move(e1, g1, Move::flags::castle_kingside));
+    moves.push_back(Move(e1, g1, Move::types::castle_kingside));
 }
 
 void moves::castle_queenside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers) {
   using namespace squares;
   if (!is_attacked(e1 | d1 | c1 | b1, occupancy, attackers))
-    moves.push_back(Move(e1, c1, Move::flags::castle_queenside));
+    moves.push_back(Move(e1, c1, Move::types::castle_queenside));
+}
+
+
+void moves::all_moves(std::vector<Move>& moves,
+                      array2d<Bitboard, color::cardinality, pieces::cardinality> board,
+                      Bitboard en_passant_square) {
+  using namespace pieces;
+
+  std::array<Bitboard, colors::cardinality> occupancy = [this](){
+    auto occupancy;
+    for (Color c: colors::values) {
+      occupancy[c] = 0;
+      for (Piece c: pieces::values)
+        occupancy[c] |= board[c][p];
+    }
+  }();
+
+  Color us = color::white, them = color::black;
+  pawn  (moves, board[us][pawn],   occupancy[us], occupancy[them], en_passant_square);
+  knight(moves, board[us][knight], occupancy[us], occupancy[them]);
+  bishop(moves, board[us][bishop], occupancy[us], occupancy[them]);
+  rook  (moves, board[us][rook],   occupancy[us], occupancy[them]);
+  queen (moves, board[us][queen],  occupancy[us], occupancy[them]);
+  king  (moves, board[us][king],   occupancy[us], occupancy[them]);
+}
+
+std::ostream& operator<<(std::ostream& o, const Move& m) {
+  o << "Move(" << squares::name_from_index(m.from()) <<
+       "->" << squares::name_from_index(m.to()) <<
+       "; " << Move::types::names[m.type()] <<
+       ")";
+  return o;
 }
