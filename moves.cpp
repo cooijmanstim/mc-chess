@@ -19,7 +19,7 @@ squares::Index Move::to  () const { return (move >> offset_to)   & ((1 << nbits_
 
 bool Move::operator==(const Move& that) const { return this->move == that.move; }
 bool Move::operator!=(const Move& that) const { return this->move != that.move; }
-
+bool Move::operator< (const Move& that) const { return this->move <  that.move; }
 
 // after https://chessprogramming.wikispaces.com/Hyperbola+Quintessence
 // FIXME: this is also used for rook attacks along files, for which it does not work
