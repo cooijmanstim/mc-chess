@@ -57,13 +57,15 @@ Bitboard moves::pawn_attacks_w(Bitboard pawn) { return ((pawn & ~files::a) << (n
 Bitboard moves::pawn_attacks_e(Bitboard pawn) { return ((pawn & ~files::h) << (north + east)); }
 
 Bitboard moves::knight_attacks_nnw(Bitboard knight) { return (knight & ~files::a)             << (north + north + west); }
-Bitboard moves::knight_attacks_ssw(Bitboard knight) { return (knight & ~files::a)             << (south + south + west); }
 Bitboard moves::knight_attacks_nww(Bitboard knight) { return (knight & ~files::a & ~files::b) << (north + west  + west); }
-Bitboard moves::knight_attacks_sww(Bitboard knight) { return (knight & ~files::a & ~files::b) << (south + west  + west); }
 Bitboard moves::knight_attacks_nne(Bitboard knight) { return (knight & ~files::h)             << (north + north + east); }
-Bitboard moves::knight_attacks_sse(Bitboard knight) { return (knight & ~files::h)             << (south + south + east); }
 Bitboard moves::knight_attacks_nee(Bitboard knight) { return (knight & ~files::h & ~files::g) << (north + east  + east); }
-Bitboard moves::knight_attacks_see(Bitboard knight) { return (knight & ~files::h & ~files::g) << (south + east  + east); }
+
+// NOTE: shifting in the other direction to avoid negative shifts
+Bitboard moves::knight_attacks_ssw(Bitboard knight) { return (knight & ~files::a)             >> (north + north + east); }
+Bitboard moves::knight_attacks_sww(Bitboard knight) { return (knight & ~files::a & ~files::b) >> (north + east  + east); }
+Bitboard moves::knight_attacks_sse(Bitboard knight) { return (knight & ~files::h)             >> (north + north + west); }
+Bitboard moves::knight_attacks_see(Bitboard knight) { return (knight & ~files::h & ~files::g) >> (north + west  + west); }
 
 Bitboard moves::bishop_attacks(Bitboard occupancy, squares::Index source) {
   return 
@@ -82,9 +84,9 @@ Bitboard moves::queen_attacks(Bitboard occupancy, squares::Index source) {
 }
 
 Bitboard moves::king_attacks(Bitboard king) {
-  Bitboard leftright = ((king & ~files::a) << west) | ((king & ~files::h) << east);
+  Bitboard leftright = ((king & ~files::a) >> east) | ((king & ~files::h) << east);
   Bitboard triple = leftright | king;
-  return leftright | (triple << north) | (triple << south);
+  return leftright | (triple << north) | (triple >> north);
 }
 
 Bitboard moves::all_attacks(Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers) {
