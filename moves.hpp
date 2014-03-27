@@ -39,7 +39,7 @@ public:
   bool operator!=(const Move& that) const;
   bool operator< (const Move& that) const; // used for std::set in tests
 
-  friend std::ostream& operator<<(std::ostream& o, const Move& b);
+  friend std::ostream& operator<<(std::ostream& o, const Move& m);
 };
 
 

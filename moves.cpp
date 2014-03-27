@@ -30,7 +30,7 @@ Move::Move(const Move& that) :
 {
 }
 
-Type Move::type() const { return (move >> offset_type) & ((1 << nbits_type) - 1); }
+Move::Type Move::type() const { return static_cast<Move::Type>((move >> offset_type) & ((1 << nbits_type) - 1)); }
 squares::Index Move::from() const { return (move >> offset_from) & ((1 << nbits_from) - 1); }
 squares::Index Move::to  () const { return (move >> offset_to)   & ((1 << nbits_to)   - 1); }
 
