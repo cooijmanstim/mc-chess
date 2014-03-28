@@ -37,8 +37,6 @@ BOOST_AUTO_TEST_CASE(initial_moves) {
   std::set_difference(actual_moves.begin(), actual_moves.end(),
                       expected_moves.begin(), expected_moves.end(),
                       std::inserter(falsepositives, falsepositives.begin()));
-  std::cout << "expected_moves: " << expected_moves << std::endl;
-  std::cout << "actual_moves: " << actual_moves << std::endl;
   BOOST_CHECK_MESSAGE(falsenegatives.empty(), "legal moves not generated: " << falsenegatives);
   BOOST_CHECK_MESSAGE(falsepositives.empty(), "illegal moves generated: " << falsepositives);
 }

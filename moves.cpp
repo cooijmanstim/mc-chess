@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <cassert>
 
 #include "moves.hpp"
 
@@ -23,6 +24,9 @@ std::string Move::typename_from_type(Type type) {
 Move::Move(squares::Index from, squares::Index to, Type type = Type::normal) :
   move(((unsigned int)type << offset_type) | (from << offset_from) | (to << offset_to))
 {
+  // TODO: change squares::Index to an unsigned type to catch some more bugs here
+  assert(0 <= from && from < squares::cardinality);
+  assert(0 <= to   && to   < squares::cardinality);
 }
 
 Move::Move(const Move& that) :
@@ -53,19 +57,19 @@ Bitboard slides(Bitboard occupancy, Bitboard piece, Bitboard mobilityMask) {
 
 using namespace directions;
 
-Bitboard moves::pawn_attacks_w(Bitboard pawn) { return ((pawn & ~files::a) << (north + west)); }
-Bitboard moves::pawn_attacks_e(Bitboard pawn) { return ((pawn & ~files::h) << (north + east)); }
+Bitboard moves::pawn_attacks_w(Bitboard pawn) { return ((pawn & ~files::a) << vertical >> horizontal); }
+Bitboard moves::pawn_attacks_e(Bitboard pawn) { return ((pawn & ~files::h) << vertical << horizontal); }
 
-Bitboard moves::knight_attacks_nnw(Bitboard knight) { return (knight & ~files::a)             << (north + north + west); }
-Bitboard moves::knight_attacks_nww(Bitboard knight) { return (knight & ~files::a & ~files::b) << (north + west  + west); }
-Bitboard moves::knight_attacks_nne(Bitboard knight) { return (knight & ~files::h)             << (north + north + east); }
-Bitboard moves::knight_attacks_nee(Bitboard knight) { return (knight & ~files::h & ~files::g) << (north + east  + east); }
+Bitboard moves::knight_attacks_nnw(Bitboard knight) { return (knight & ~files::a)             << 2*vertical >>   horizontal; }
+Bitboard moves::knight_attacks_nww(Bitboard knight) { return (knight & ~files::a & ~files::b) <<   vertical >> 2*horizontal; }
+Bitboard moves::knight_attacks_nne(Bitboard knight) { return (knight & ~files::h)             << 2*vertical <<   horizontal; }
+Bitboard moves::knight_attacks_nee(Bitboard knight) { return (knight & ~files::h & ~files::g) <<   vertical << 2*horizontal; }
 
 // NOTE: shifting in the other direction to avoid negative shifts
-Bitboard moves::knight_attacks_ssw(Bitboard knight) { return (knight & ~files::a)             >> (north + north + east); }
-Bitboard moves::knight_attacks_sww(Bitboard knight) { return (knight & ~files::a & ~files::b) >> (north + east  + east); }
-Bitboard moves::knight_attacks_sse(Bitboard knight) { return (knight & ~files::h)             >> (north + north + west); }
-Bitboard moves::knight_attacks_see(Bitboard knight) { return (knight & ~files::h & ~files::g) >> (north + west  + west); }
+Bitboard moves::knight_attacks_ssw(Bitboard knight) { return (knight & ~files::a)             >> 2*vertical >>   horizontal; }
+Bitboard moves::knight_attacks_sww(Bitboard knight) { return (knight & ~files::a & ~files::b) >>   vertical >> 2*horizontal; }
+Bitboard moves::knight_attacks_sse(Bitboard knight) { return (knight & ~files::h)             >> 2*vertical <<   horizontal; }
+Bitboard moves::knight_attacks_see(Bitboard knight) { return (knight & ~files::h & ~files::g) >>   vertical << 2*horizontal; }
 
 Bitboard moves::bishop_attacks(Bitboard occupancy, squares::Index source) {
   return 
@@ -84,9 +88,9 @@ Bitboard moves::queen_attacks(Bitboard occupancy, squares::Index source) {
 }
 
 Bitboard moves::king_attacks(Bitboard king) {
-  Bitboard leftright = ((king & ~files::a) >> east) | ((king & ~files::h) << east);
+  Bitboard leftright = ((king & ~files::a) >> horizontal) | ((king & ~files::h) << horizontal);
   Bitboard triple = leftright | king;
-  return leftright | (triple << north) | (triple >> north);
+  return leftright | (triple << vertical) | (triple >> vertical);
 }
 
 Bitboard moves::all_attacks(Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers) {
@@ -129,47 +133,47 @@ void moves::pawn(std::vector<Move>& moves, Bitboard pawn, Bitboard us, Bitboard 
   Bitboard empty = ~(us | them);
 
   // single push
-  bitboard::for_each_member((pawn << north) & empty,
+  bitboard::for_each_member((pawn << vertical) & empty,
                             [&moves](squares::Index target) {
                               if (ranks::bySquareIndex[target] == ranks::_8) {
                                 for (Move::Type promotion: {Move::Type::promotion_knight,
                                                             Move::Type::promotion_bishop,
                                                             Move::Type::promotion_rook,
                                                             Move::Type::promotion_queen}) {
-                                  moves.push_back(Move(target + directions::south,
+                                  moves.push_back(Move(target + south,
                                                        target,
                                                        promotion));
                                 }
                               } else {
-                                moves.push_back(Move(target + directions::south,
+                                moves.push_back(Move(target + south,
                                                      target));
                               }
                             });
 
   // double push
-  bitboard::for_each_member((pawn << 2*north) & empty,
+  bitboard::for_each_member((pawn << 2*vertical) & empty,
                             [&moves](squares::Index target) {
-                              moves.push_back(Move(target + 2*directions::south,
+                              moves.push_back(Move(target + 2*south,
                                                    target,
                                                    Move::Type::double_push));
                             });
 
   // captures
   moves_from_targets(moves, pawn_attacks_w(pawn) & (them | en_passant_square),
-                     directions::south + directions::east, relative);
+                     south + east, relative);
   moves_from_targets(moves, pawn_attacks_e(pawn) & (them | en_passant_square),
-                     directions::south + directions::west, relative);
+                     south + west, relative);
 }
 
 void moves::knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitboard them) {
-  moves_from_targets(moves, knight_attacks_nnw(knight) & ~us, 2*directions::south + directions::east,  relative);
-  moves_from_targets(moves, knight_attacks_ssw(knight) & ~us, 2*directions::north + directions::east,  relative);
-  moves_from_targets(moves, knight_attacks_nww(knight) & ~us, 2*directions::east  + directions::south, relative);
-  moves_from_targets(moves, knight_attacks_sww(knight) & ~us, 2*directions::east  + directions::north, relative);
-  moves_from_targets(moves, knight_attacks_nne(knight) & ~us, 2*directions::south + directions::west,  relative);
-  moves_from_targets(moves, knight_attacks_sse(knight) & ~us, 2*directions::north + directions::west,  relative);
-  moves_from_targets(moves, knight_attacks_nee(knight) & ~us, 2*directions::west  + directions::south, relative);
-  moves_from_targets(moves, knight_attacks_see(knight) & ~us, 2*directions::west  + directions::north, relative);
+  moves_from_targets(moves, knight_attacks_nnw(knight) & ~us, 2*south + east,  relative);
+  moves_from_targets(moves, knight_attacks_ssw(knight) & ~us, 2*north + east,  relative);
+  moves_from_targets(moves, knight_attacks_nww(knight) & ~us, 2*east  + south, relative);
+  moves_from_targets(moves, knight_attacks_sww(knight) & ~us, 2*east  + north, relative);
+  moves_from_targets(moves, knight_attacks_nne(knight) & ~us, 2*south + west,  relative);
+  moves_from_targets(moves, knight_attacks_sse(knight) & ~us, 2*north + west,  relative);
+  moves_from_targets(moves, knight_attacks_nee(knight) & ~us, 2*west  + south, relative);
+  moves_from_targets(moves, knight_attacks_see(knight) & ~us, 2*west  + north, relative);
 }
 
 void moves::bishop(std::vector<Move>& moves, Bitboard bishop, Bitboard us, Bitboard them) {
