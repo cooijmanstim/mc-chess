@@ -28,7 +28,7 @@ public:
   State(State &that);
   bool operator==(State &that);
 
-  friend std::ostream& operator<<(std::ostream& o, const State& b);
+  friend std::ostream& operator<<(std::ostream& o, const State& s);
 
   std::vector<Move> moves();
 };

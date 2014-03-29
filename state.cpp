@@ -115,6 +115,29 @@ std::vector<Move> State::moves() /* TODO: const */ {
   return moves;
 }
 
+std::vector<Move> State::match_algebraic(Piece piece,
+                                         boost::optional<files::Index> source_file,
+                                         boost::optional<ranks::Index> source_rank,
+                                         bool is_capture,
+                                         squares::Index target) {
+  std::vector<Move> candidates;
+  moves::piece_moves(candidates, piece, board, en_passant_square);
+
+  std::remove_if(candidates.begin(), candidates.end(), [file, rank, is_capture](const Move& candidate) {
+      if (source_file && source_file != files::index_from_square_index(candidate.from()))
+        return true;
+      if (source_rank && source_rank != ranks::index_from_square_index(candidate.from()))
+        return true;
+      if (is_capture && candidate.type != Move::Type::capture)
+        return true;
+      if (candidate.to() != target)
+        return true;
+      return false;
+    });
+
+  return candidates;
+}
+
 void State::apply_moves(std::string algebraic_variation) {
   // TODO: figure out how to deal with monochromeness 'n' stuff
   std::vector<std::string> algebraic_moves;
@@ -127,7 +150,7 @@ void State::apply_moves(std::string algebraic_variation) {
 void State::apply_moves(std::vector<std::string> algebraic_moves) {
   for (std::string algebraic_move: algebraic_moves) {
     // TODO: color
-    apply_move(Move(algebraic_move, board, en_passant_square));
+    apply_move(Move(algebraic_move, this));
   }
 }
 
