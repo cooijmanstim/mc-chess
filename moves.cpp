@@ -22,11 +22,16 @@ std::string Move::typename_from_type(Type type) {
 }
 
 Move::Move(squares::Index from, squares::Index to, Type type = Type::normal) :
-  move(((unsigned int)type << offset_type) | (from << offset_from) | (to << offset_to))
+  move(((Word)type << offset_type) | (from << offset_from) | (to << offset_to))
 {
   // TODO: change squares::Index to an unsigned type to catch some more bugs here
   assert(0 <= from && from < squares::cardinality);
   assert(0 <= to   && to   < squares::cardinality);
+}
+
+Move::Move(std::string algebraic, Board board) :
+  move(parse_algebraic(algebraic, board))
+{
 }
 
 Move::Move(const Move& that) :
@@ -37,6 +42,48 @@ Move::Move(const Move& that) :
 Move::Type Move::type() const { return static_cast<Move::Type>((move >> offset_type) & ((1 << nbits_type) - 1)); }
 squares::Index Move::from() const { return (move >> offset_from) & ((1 << nbits_from) - 1); }
 squares::Index Move::to  () const { return (move >> offset_to)   & ((1 << nbits_to)   - 1); }
+
+Move::Word Move::parse_algebraic(std::string algebraic, Board board, Bitboard en_passant_square) {
+  boost::regex algebraic_move_regex("([A-H]?)([a-h]?)([1-8]?)(x?)([a-h][1-8])");
+  boost::smatch m;
+  if (!boost::regex_match(algebraic, m, algebraic_move_regex))
+    throw std::runtime_error(boost::format("can't parse algebraic move: %1") % algebraic);
+
+  Piece piece = pieces::type_from_name(std::string(m[1].first, m[1].last));
+
+  Bitboard source_file = 0, source_rank = 0;
+  if (m[2].matched) source_file = files::bitboard_from_name(std::string(m[2].first, m[2].last));
+  if (m[3].matched) source_rank = ranks::bitboard_from_name(std::string(m[3].first, m[3].last));
+
+  bool is_capture = m[4].matched;
+
+  squares::Index target = squares::index_from_name(std::string(m[5].first, m[5].second));
+
+  std::vector<Move> candidates;
+  piece_moves(candidates, piece, board, en_passant_square);
+
+  std::remove_if(candidates.begin(), candidates.end(), [file, rank, is_capture](const Move& candidate) {
+      if (!bitboard::is_empty(source_file) &&
+          source_file != files::bitboard_from_square_index(candidate.from()))
+        return true;
+      if (!bitboard::is_empty(source_rank) &&
+          source_rank != ranks::bitboard_from_square_index(candidate.from()))
+        return true;
+      if (is_capture && candidate.type != Move::Type::capture)
+        return true;
+      if (candidate.to() != target)
+        return true;
+      return false;
+    });
+
+  if (candidates.is_empty())
+    throw std::runtime_error(boost::format("can't find match for algebraic move: %1") % algebraic);
+
+  if (candidates.size() > 1)
+    throw std::runtime_error(boost::format("ambiguous algebraic move: %1, candidates: %2") % algebraic % candidates);
+
+  return candidates[0];
+}
 
 bool Move::operator==(const Move& that) const { return this->move == that.move; }
 bool Move::operator!=(const Move& that) const { return this->move != that.move; }

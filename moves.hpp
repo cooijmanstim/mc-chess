@@ -9,7 +9,9 @@
 #include "pieces.hpp"
 
 class Move {
-  const uint16_t move;
+  typedef uint16_t Word;
+
+  const Word move;
   static const size_t nbits_type = 4, nbits_from = 6, nbits_to = 6;
   static const size_t offset_type = 0, offset_from = offset_type + nbits_type, offset_to = offset_from + nbits_from;
 

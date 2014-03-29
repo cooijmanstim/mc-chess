@@ -1,3 +1,5 @@
+#include <boost/algorithm/string_regex.hpp>
+
 #include "state.hpp"
 
 State::State()
@@ -104,7 +106,7 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
   return o;
 }
 
-std::vector<Move> State::moves() {
+std::vector<Move> State::moves() /* TODO: const */ {
   // NOTE: move generation always generates from white's perspective. modify board accordingly.
 
   // TODO: maybe reserve()
@@ -112,3 +114,21 @@ std::vector<Move> State::moves() {
   moves::all_moves(moves, board, en_passant_square);
   return moves;
 }
+
+void State::apply_moves(std::string algebraic_variation) {
+  // TODO: figure out how to deal with monochromeness 'n' stuff
+  std::vector<std::string> algebraic_moves;
+  boost::algorithm::split_regex(algebraic_moves,
+                                boost::algorithm::trim(algebraic_variation),
+                                "\\s+(\\d+\\.)?");
+  apply_moves(algebraic_moves);
+}
+
+void State::apply_moves(std::vector<std::string> algebraic_moves) {
+  for (std::string algebraic_move: algebraic_moves) {
+    // TODO: color
+    apply_move(Move(algebraic_move, board, en_passant_square));
+  }
+}
+
+
