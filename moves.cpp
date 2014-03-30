@@ -227,13 +227,14 @@ void moves::castle_queenside(std::vector<Move>& moves, Bitboard occupancy, std::
 typedef std::function<void(std::vector<Move>& moves, Bitboard piece, Bitboard us, Bitboard them, Bitboard en_passant_square)> MoveGenerator;
 
 const auto move_generators_by_piece = []() {
-  std::vector<MoveGenerator> move_generators;
-  move_generators[pieces::pawn]   = moves::pawn;
-  move_generators[pieces::knight] = moves::knight;
-  move_generators[pieces::bishop] = moves::bishop;
-  move_generators[pieces::rook]   = moves::rook;
-  move_generators[pieces::queen]  = moves::queen;
-  move_generators[pieces::king]   = moves::king;
+  std::vector<MoveGenerator> move_generators = {
+    [pieces::pawn]   = moves::pawn,
+    [pieces::knight] = moves::knight,
+    [pieces::bishop] = moves::bishop,
+    [pieces::rook]   = moves::rook,
+    [pieces::queen]  = moves::queen,
+    [pieces::king]   = moves::king,
+  };
   return move_generators;
 }();
 

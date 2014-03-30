@@ -37,4 +37,9 @@ public:
 
   Part operator[](Index index) const;
   Part operator[](std::string name) const;
+
+  std::vector<Part>::const_iterator begin() const;
+  std::vector<Part>::const_iterator end() const;
 };
+
+std::ostream& operator<<(std::ostream& o, const TrivialBoardPartition::Part& p);
