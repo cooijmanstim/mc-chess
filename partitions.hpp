@@ -1,0 +1,5 @@
+#include "squares.hpp"
+#include "files.hpp"
+#include "ranks.hpp"
+#include "diagonals.hpp"
+#include "antidiagonals.hpp"

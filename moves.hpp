@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "bitboard.hpp"
+#include "partitions.hpp"
 #include "board.hpp"
 #include "pieces.hpp"
 

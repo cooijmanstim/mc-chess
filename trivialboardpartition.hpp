@@ -4,6 +4,8 @@
 #include <map>
 #include <string>
 
+#include "bitboard.hpp"
+
 class TrivialBoardPartition {
 public:
   typedef size_t Index;
@@ -14,15 +16,15 @@ public:
     std::string name;
     Bitboard bitboard;
 
-    bool operator==(const Part& that) const { return this->bitboard == that.bitboard; }
+    bool operator==(const Part& that) const;
 
     // bitwise operators on Parts imply bitboard operations
-    Bitboard operator|(const Part& that) const { return this->bitboard | that.bitboard; }
-    Bitboard operator&(const Part& that) const { return this->bitboard & that.bitboard; }
-    Bitboard operator^(const Part& that) const { return this->bitboard ^ that.bitboard; }
-    Bitboard operator~() const { return ~this->bitboard; }
+    Bitboard operator|(const Part& that) const;
+    Bitboard operator&(const Part& that) const;
+    Bitboard operator^(const Part& that) const;
+    Bitboard operator~() const;
 
-    operator Bitboard() const { return this->bitboard; }
+    operator Bitboard() const;
   };
 
   const size_t cardinality;
@@ -31,35 +33,8 @@ public:
   const std::map<std::string, Part> parts_by_name;
 
   TrivialBoardPartition(std::initializer_list<std::string> names,
-                        std::function<Bitboard(Index)> bitboard_from_index) :
-    cardinality(names.size()),
-    indices([&names]() {
-        std::vector<Index> result;
-        for (Index i = 0; i < names.size(); i++)
-          result.push_back(i);
-        return result;
-      }()),
-    parts_by_index([&names, &bitboard_from_index]() {
-        std::vector<Part> result;
-        Index i = 0; auto itname = names.begin();
-        while (itname != names.end()) {
-          result.emplace_back(Part{i, *itname, bitboard_from_index(i)});
-          i++; itname++;
-        }
-        return result;
-      }()),
-    parts_by_name([this, &names]() {
-        std::map<std::string, Part> result;
-        Index i = 0; auto itname = names.begin();
-        while (itname != names.end()) {
-          result[*itname] = parts_by_index[i];
-          i++; itname++;
-        }
-        return result;
-      }())
-  {
-  }
+                        std::function<Bitboard(Index)> bitboard_from_index);
 
-  Part operator[](Index index)      const { return parts_by_index[index]; }
-  Part operator[](std::string name) const { return parts_by_name.at(name); }
+  Part operator[](Index index) const;
+  Part operator[](std::string name) const;
 };

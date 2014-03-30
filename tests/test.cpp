@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "util.hpp"
+#include "direction.hpp"
 #include "state.hpp"
 #include "moves.hpp"
 

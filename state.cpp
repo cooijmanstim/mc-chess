@@ -4,6 +4,7 @@
 #include <boost/format.hpp>
 
 #include "state.hpp"
+#include "direction.hpp"
 
 State::State()
 {

@@ -1,10 +1,12 @@
 import testing ;
 
-lib game : [ glob *.cpp ] : ;
+use-project /boost : /home/tim/src/boost_1_55_0 ;
 
-exe main : [ glob *.cpp ] : ;
+#using boost : 1.55 : <root>~/src/boost_1_55_0 ;
+
+lib game : [ glob *.cpp ] /boost//regex : ;
 
 for test in [ glob tests/*.cpp ] {
-    unit-test $(test:B) : $(test) game ;
+    unit-test $(test:B) : $(test) game /boost//regex ;
 }
 

@@ -12,15 +12,7 @@ namespace pieces {
 
   const size_t cardinality = sizeof(values) / sizeof(Piece);
 
-  std::map<std::string, Piece> by_name = {
-    {"pawn", pawn},
-    {"knight", knight},
-    {"bishop", bishop},
-    {"rook", queen},
-    {"king", king},
-  };
-
-  Piece type_from_name(std::string name) { return by_name[name]; }
+  Piece type_from_name(std::string name);
 }
 
 typedef enum pieces::Piece Piece;

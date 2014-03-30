@@ -6,6 +6,7 @@
 #include <boost/optional.hpp>
 
 #include "moves.hpp"
+#include "direction.hpp"
 
 // routines for generating moves for White.  flip the bitboards vertically and swap ownership
 // to make them applicable for Black.
