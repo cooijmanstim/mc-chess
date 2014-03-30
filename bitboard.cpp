@@ -28,13 +28,6 @@ squares::Index squares::index_from_bitboard(Bitboard b) {
   return bitboard::scan_forward(b);
 }
 
-std::string squares::name_from_index(squares::Index i) {
-  assert(i < 64);
-  return std::string({"abcdefgh"[i & ((1<<3) - 1)],
-                      "12345678"[i >> 3]});
+BoardPartition::Part squares::from_bitboard(Bitboard b) {
+  return partition[index_from_bitboard(b)];
 }
-
-std::string squares::name_from_bitboard(Bitboard b) {
-  return squares::name_from_index(squares::index_from_bitboard(b));
-}
-

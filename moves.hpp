@@ -11,7 +11,7 @@
 class Move {
   typedef uint16_t Word;
 
-  const Word move;
+  Word move;
   static const size_t nbits_type = 4, nbits_from = 6, nbits_to = 6;
   static const size_t offset_type = 0, offset_from = offset_type + nbits_type, offset_to = offset_from + nbits_from;
 
@@ -26,12 +26,15 @@ public:
     promotion_bishop,
     promotion_rook,
     promotion_queen,
+    capture,
   };
 
   static std::string typename_from_type(Type type);
 
   Move(squares::Index from, squares::Index to, Type type);
   Move(const Move& that);
+
+  Move& operator=(const Move& that);
 
   Type type() const;
   squares::Index from() const;
@@ -65,12 +68,14 @@ namespace moves {
   bool is_attacked(Bitboard targets, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
   
   void pawn(std::vector<Move>& moves, Bitboard pawn, Bitboard us, Bitboard them, Bitboard en_passant_square);
-  void knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitboard them);
-  void bishop(std::vector<Move>& moves, Bitboard bishop, Bitboard us, Bitboard them);
-  void rook(std::vector<Move>& moves, Bitboard rook, Bitboard us, Bitboard them);
-  void queen(std::vector<Move>& moves, Bitboard queen, Bitboard us, Bitboard them);
-  void king(std::vector<Move>& moves, Bitboard king, Bitboard us, Bitboard them);
+  void knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitboard them, Bitboard en_passant_square);
+  void bishop(std::vector<Move>& moves, Bitboard bishop, Bitboard us, Bitboard them, Bitboard en_passant_square);
+  void rook(std::vector<Move>& moves, Bitboard rook, Bitboard us, Bitboard them, Bitboard en_passant_square);
+  void queen(std::vector<Move>& moves, Bitboard queen, Bitboard us, Bitboard them, Bitboard en_passant_square);
+  void king(std::vector<Move>& moves, Bitboard king, Bitboard us, Bitboard them, Bitboard en_passant_square);
   void castle_kingside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
   void castle_queenside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
-  void all_moves(std::vector<Move>& moves, Board board, Bitboard en_passant_square);
+
+  void piece_moves(std::vector<Move>& moves, Piece piece, Board board, Occupancy occupancy, Bitboard en_passant_square);
+  void all_moves(std::vector<Move>& moves, Board board, Occupancy occupancy, Bitboard en_passant_square);
 }

@@ -6,3 +6,4 @@
 #include "pieces.hpp"
 
 typedef array2d<Bitboard, colors::cardinality, pieces::cardinality> Board;
+typedef std::array<Bitboard, colors::cardinality> Occupancy;

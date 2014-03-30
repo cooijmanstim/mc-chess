@@ -1,4 +1,7 @@
+#include <string>
+
 #include <boost/algorithm/string_regex.hpp>
+#include <boost/format.hpp>
 
 #include "state.hpp"
 
@@ -64,7 +67,7 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
     'P', 'N', 'B', 'R', 'Q', 'K',
   };
 
-  for (size_t i = 0; i < squares::cardinality; i++) {
+  for (squares::Index i: squares::partition.indices) {
     o << ' ';
 
     // bit index with rank flipped
@@ -100,35 +103,71 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
   if (s.can_castle_queenside[colors::black]) o << "Q";
 
   if (s.en_passant_square != 0)
-    o << " en-passant square: " << squares::name_from_bitboard(s.en_passant_square);
+    o << " en-passant square: " << squares::from_bitboard(s.en_passant_square).name;
 
   o << std::endl;
   return o;
 }
 
-std::vector<Move> State::moves() /* TODO: const */ {
+std::vector<Move> State::moves() const {
   // NOTE: move generation always generates from white's perspective. modify board accordingly.
 
   // TODO: maybe reserve()
   std::vector<Move> moves;
-  moves::all_moves(moves, board, en_passant_square);
+  moves::all_moves(moves, board, occupancy(), en_passant_square);
   return moves;
 }
 
-std::vector<Move> State::match_algebraic(Piece piece,
-                                         boost::optional<files::Index> source_file,
-                                         boost::optional<ranks::Index> source_rank,
-                                         bool is_capture,
-                                         squares::Index target) {
-  std::vector<Move> candidates;
-  moves::piece_moves(candidates, piece, board, en_passant_square);
+Move State::parse_algebraic(std::string algebraic) const {
+  boost::regex algebraic_move_regex("([NBRQK]?)([a-h]?)([1-8]?)(x?)([a-h][1-8])");
+  boost::smatch m;
+  if (!boost::regex_match(algebraic, m, algebraic_move_regex))
+    throw std::runtime_error(str(boost::format("can't parse algebraic move: %1") % algebraic));
 
-  std::remove_if(candidates.begin(), candidates.end(), [file, rank, is_capture](const Move& candidate) {
-      if (source_file && source_file != files::index_from_square_index(candidate.from()))
+  Piece piece = pieces::type_from_name(std::string(m[1].first, m[1].second));
+
+  boost::optional<BoardPartition::Part> source_file;
+  boost::optional<BoardPartition::Part> source_rank;
+  if (m[2].matched) source_file = files::partition[std::string(m[2].first, m[2].second)];
+  if (m[3].matched) source_rank = ranks::partition[std::string(m[3].first, m[3].second)];
+
+  bool is_capture = m[4].matched;
+  squares::Index target = squares::partition[std::string(m[5].first, m[5].second)].index;
+
+  std::vector<Move> candidates = match_algebraic(piece, source_file, source_rank, is_capture, target);
+  if (candidates.empty())
+    throw std::runtime_error(str(boost::format("no match for algebraic move: %1") % algebraic));
+  if (candidates.size() > 1)
+    throw std::runtime_error(str(boost::format("ambiguous algebraic move: %1, candidates: %2") % algebraic % candidates));
+  return candidates[0];
+}
+
+// TODO: maybe keep track of as we go along. maybe.
+Occupancy State::occupancy() const {
+  Occupancy occupancy;
+  for (Color c: colors::values) {
+    occupancy[c] = 0;
+    for (Piece p: pieces::values)
+      occupancy[c] |= board[c][p];
+  }
+  return occupancy;
+}
+
+std::vector<Move> State::match_algebraic(Piece piece,
+                                         boost::optional<BoardPartition::Part> source_file,
+                                         boost::optional<BoardPartition::Part> source_rank,
+                                         bool is_capture,
+                                         squares::Index target) const {
+  std::vector<Move> candidates;
+  moves::piece_moves(candidates, piece, board, occupancy(), en_passant_square);
+
+  std::remove_if(candidates.begin(), candidates.end(),
+                 [source_file, source_rank, is_capture, target](const Move& candidate) {
+      if (source_file && !(*source_file & squares::partition[candidate.from()]))
         return true;
-      if (source_rank && source_rank != ranks::index_from_square_index(candidate.from()))
+      if (source_rank && !(*source_rank & squares::partition[candidate.from()]))
         return true;
-      if (is_capture && candidate.type != Move::Type::capture)
+      if (is_capture && candidate.type() == Move::Type::capture)
         return true;
       if (candidate.to() != target)
         return true;
@@ -138,20 +177,93 @@ std::vector<Move> State::match_algebraic(Piece piece,
   return candidates;
 }
 
-void State::apply_moves(std::string algebraic_variation) {
+void State::make_moves(std::string algebraic_variation) {
   // TODO: figure out how to deal with monochromeness 'n' stuff
+  boost::regex algebraic_separator("\\s+(\\d+\\.)?");
   std::vector<std::string> algebraic_moves;
   boost::algorithm::split_regex(algebraic_moves,
-                                boost::algorithm::trim(algebraic_variation),
-                                "\\s+(\\d+\\.)?");
-  apply_moves(algebraic_moves);
+                                boost::algorithm::trim_copy(algebraic_variation),
+                                algebraic_separator);
+  make_moves(algebraic_moves);
 }
 
-void State::apply_moves(std::vector<std::string> algebraic_moves) {
+void State::make_moves(std::vector<std::string> algebraic_moves) {
   for (std::string algebraic_move: algebraic_moves) {
     // TODO: color
-    apply_move(Move(algebraic_move, this));
+    make_move(parse_algebraic(algebraic_move));
   }
 }
 
+// TODO: overload with second argument for returning undo information
+void State::make_move(Move m) {
+  Bitboard source = squares::partition[m.from()].bitboard,
+           target = squares::partition[m.to()].bitboard;
 
+  std::array<Bitboard, pieces::cardinality> us = board[colors::white], them = board[colors::black];
+  for (Piece piece: pieces::values) {
+    if (!(us[piece] & source))
+      continue;
+
+    us[piece] &= ~source | target;
+
+    if (piece == pieces::king) {
+      can_castle_kingside[colors::white] = false;
+      can_castle_queenside[colors::white] = false;
+    } else if (piece == pieces::rook) {
+      if (source == squares::h1)
+        can_castle_kingside[colors::white] = false;
+      else if (source == squares::a1)
+        can_castle_queenside[colors::white] = false;
+    }
+
+    switch (m.type()) {
+    case Move::Type::capture:
+      if (target == en_passant_square) {
+        assert(piece == pieces::pawn);
+        // the captured pawn is south from target
+        them[piece] &= ~(target >> directions::vertical);
+      } else {
+        for (Piece capturee: pieces::values)
+          them[capturee] &= ~target;
+      }
+      break;
+    case Move::Type::double_push:
+      en_passant_square = target;
+      break;
+    case Move::Type::castle_kingside:
+      us[pieces::rook] &= ~squares::h1 | squares::f1;
+      break;
+    case Move::Type::castle_queenside:
+      us[pieces::rook] &= ~squares::a1 | squares::d1;
+      break;
+    case Move::Type::promotion_knight:
+      assert(piece == pieces::pawn);
+      us[piece] &= ~target;
+      us[pieces::knight] |= target;
+      break;
+    case Move::Type::promotion_bishop:
+      assert(piece == pieces::pawn);
+      us[piece] &= ~target;
+      us[pieces::bishop] |= target;
+      break;
+    case Move::Type::promotion_rook:
+      assert(piece == pieces::pawn);
+      us[piece] &= ~target;
+      us[pieces::rook] |= target;
+      break;
+    case Move::Type::promotion_queen:
+      assert(piece == pieces::pawn);
+      us[piece] &= ~target;
+      us[pieces::queen] |= target;
+      break;
+    case Move::Type::normal:
+      break;
+    default:
+      throw std::runtime_error("unhandled Move::Type case");
+    }
+  }
+
+  // TODO: if king is in check now, lose
+  // TODO: flip board vertically a la monochromicity
+  // TODO: unset en_passant_square if not double push
+}

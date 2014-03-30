@@ -1,6 +1,10 @@
 #include <stdexcept>
 #include <cassert>
 
+#include <boost/regex.hpp>
+#include <boost/format.hpp>
+#include <boost/optional.hpp>
+
 #include "moves.hpp"
 
 // routines for generating moves for White.  flip the bitboards vertically and swap ownership
@@ -25,13 +29,8 @@ Move::Move(squares::Index from, squares::Index to, Type type = Type::normal) :
   move(((Word)type << offset_type) | (from << offset_from) | (to << offset_to))
 {
   // TODO: change squares::Index to an unsigned type to catch some more bugs here
-  assert(0 <= from && from < squares::cardinality);
-  assert(0 <= to   && to   < squares::cardinality);
-}
-
-Move::Move(std::string algebraic, State state) :
-  move(parse_algebraic(algebraic, state))
-{
+  assert(0 <= from && from < squares::partition.cardinality);
+  assert(0 <= to   && to   < squares::partition.cardinality);
 }
 
 Move::Move(const Move& that) :
@@ -39,33 +38,14 @@ Move::Move(const Move& that) :
 {
 }
 
+Move& Move::operator=(const Move& that) {
+  this->move = that.move;
+  return *this;
+}
+
 Move::Type Move::type() const { return static_cast<Move::Type>((move >> offset_type) & ((1 << nbits_type) - 1)); }
 squares::Index Move::from() const { return (move >> offset_from) & ((1 << nbits_from) - 1); }
 squares::Index Move::to  () const { return (move >> offset_to)   & ((1 << nbits_to)   - 1); }
-
-Move::Word Move::parse_algebraic(std::string algebraic, const State& state) {
-  boost::regex algebraic_move_regex("([NBRQK]?)([a-h]?)([1-8]?)(x?)([a-h][1-8])");
-  boost::smatch m;
-  if (!boost::regex_match(algebraic, m, algebraic_move_regex))
-    throw std::runtime_error(boost::format("can't parse algebraic move: %1") % algebraic);
-
-  Piece piece = pieces::type_from_name(std::string(m[1].first, m[1].last));
-
-  boost::optional<files::Index> source_file;
-  boost::optional<ranks::Index> source_rank;
-  if (m[2].matched) source_file = files::index_from_name(std::string(m[2].first, m[2].last));
-  if (m[3].matched) source_rank = ranks::index_from_name(std::string(m[3].first, m[3].last));
-
-  bool is_capture = m[4].matched;
-  squares::Index target = squares::index_from_name(std::string(m[5].first, m[5].second));
-
-  std::vector<Move> candidates = state.match_algebraic(piece, source_file, source_rank, is_capture, target);
-  if (candidates.is_empty())
-    throw std::runtime_error(boost::format("no match for algebraic move: %1") % algebraic);
-  if (candidates.size() > 1)
-    throw std::runtime_error(boost::format("ambiguous algebraic move: %1, candidates: %2") % algebraic % candidates);
-  return candidates[0];
-}
 
 bool Move::operator==(const Move& that) const { return this->move == that.move; }
 bool Move::operator!=(const Move& that) const { return this->move != that.move; }
@@ -102,14 +82,14 @@ Bitboard moves::knight_attacks_see(Bitboard knight) { return (knight & ~files::h
 
 Bitboard moves::bishop_attacks(Bitboard occupancy, squares::Index source) {
   return 
-    slides(occupancy, squares::byIndex[source],     diagonals::bySquareIndex[source]) |
-    slides(occupancy, squares::byIndex[source], antidiagonals::bySquareIndex[source]);
+    slides(occupancy, squares::partition[source].bitboard,     diagonals::partition.parts_by_square_index[source]) |
+    slides(occupancy, squares::partition[source].bitboard, antidiagonals::partition.parts_by_square_index[source]);
 }
 
 Bitboard moves::rook_attacks(Bitboard occupancy, squares::Index source) {
   return 
-    slides(occupancy, squares::byIndex[source], ranks::bySquareIndex[source]) |
-    slides(occupancy, squares::byIndex[source], files::bySquareIndex[source]);
+    slides(occupancy, squares::partition[source].bitboard, ranks::partition.parts_by_square_index[source]) |
+    slides(occupancy, squares::partition[source].bitboard, files::partition.parts_by_square_index[source]);
 }
 
 Bitboard moves::queen_attacks(Bitboard occupancy, squares::Index source) {
@@ -164,7 +144,7 @@ void moves::pawn(std::vector<Move>& moves, Bitboard pawn, Bitboard us, Bitboard 
   // single push
   bitboard::for_each_member((pawn << vertical) & empty,
                             [&moves](squares::Index target) {
-                              if (ranks::bySquareIndex[target] == ranks::_8) {
+                              if (ranks::partition.parts_by_square_index[target] == ranks::_8) {
                                 for (Move::Type promotion: {Move::Type::promotion_knight,
                                                             Move::Type::promotion_bishop,
                                                             Move::Type::promotion_rook,
@@ -188,13 +168,14 @@ void moves::pawn(std::vector<Move>& moves, Bitboard pawn, Bitboard us, Bitboard 
                             });
 
   // captures
+  // FIXME: promotion
   moves_from_targets(moves, pawn_attacks_w(pawn) & (them | en_passant_square),
                      south + east, relative);
   moves_from_targets(moves, pawn_attacks_e(pawn) & (them | en_passant_square),
                      south + west, relative);
 }
 
-void moves::knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitboard them) {
+void moves::knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitboard them, Bitboard en_passant_square) {
   moves_from_targets(moves, knight_attacks_nnw(knight) & ~us, 2*south + east,  relative);
   moves_from_targets(moves, knight_attacks_ssw(knight) & ~us, 2*north + east,  relative);
   moves_from_targets(moves, knight_attacks_nww(knight) & ~us, 2*east  + south, relative);
@@ -205,30 +186,31 @@ void moves::knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitbo
   moves_from_targets(moves, knight_attacks_see(knight) & ~us, 2*west  + north, relative);
 }
 
-void moves::bishop(std::vector<Move>& moves, Bitboard bishop, Bitboard us, Bitboard them) {
+void moves::bishop(std::vector<Move>& moves, Bitboard bishop, Bitboard us, Bitboard them, Bitboard en_passant_square) {
   bitboard::for_each_member(bishop, [&moves, us, them](squares::Index source) {
       moves_from_targets(moves, bishop_attacks(us | them, source) & ~us, source, absolute);
     });
 }
 
-void moves::rook(std::vector<Move>& moves, Bitboard rook, Bitboard us, Bitboard them) {
+void moves::rook(std::vector<Move>& moves, Bitboard rook, Bitboard us, Bitboard them, Bitboard en_passant_square) {
   bitboard::for_each_member(rook, [&moves, us, them](squares::Index source) {
       moves_from_targets(moves, rook_attacks(us | them, source) & ~us, source, absolute);
   });
 }
 
-void moves::queen(std::vector<Move>& moves, Bitboard queen, Bitboard us, Bitboard them) {
+void moves::queen(std::vector<Move>& moves, Bitboard queen, Bitboard us, Bitboard them, Bitboard en_passant_square) {
   bitboard::for_each_member(queen, [&moves, us, them](squares::Index source) {
       moves_from_targets(moves, queen_attacks(us | them, source) & ~us, source, absolute);
     });
 }
 
-void moves::king(std::vector<Move>& moves, Bitboard king, Bitboard us, Bitboard them) {
+void moves::king(std::vector<Move>& moves, Bitboard king, Bitboard us, Bitboard them, Bitboard en_passant_square) {
   moves_from_targets(moves, king_attacks(king) & ~us, squares::index_from_bitboard(king), absolute);
 }
 
 
 // these assume castling rights have not been lost, i.e., the king and the relevant rook have not moved
+// FIXME: never called?
 void moves::castle_kingside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers) {
   using namespace squares;
   if (!is_attacked(e1 | f1 | g1, occupancy, attackers))
@@ -241,30 +223,33 @@ void moves::castle_queenside(std::vector<Move>& moves, Bitboard occupancy, std::
     moves.push_back(Move(e1, c1, Move::Type::castle_queenside));
 }
 
+typedef std::function<void(std::vector<Move>& moves, Bitboard piece, Bitboard us, Bitboard them, Bitboard en_passant_square)> MoveGenerator;
 
-void moves::all_moves(std::vector<Move>& moves, Board board, Bitboard en_passant_square) {
-  auto occupancy = [&board](){
-    std::array<Bitboard, colors::cardinality> occupancy;
-    for (Color c: colors::values) {
-      occupancy[c] = 0;
-      for (Piece p: pieces::values)
-        occupancy[c] |= board[c][p];
-    }
-    return occupancy;
-  }();
+const auto move_generators_by_piece = []() {
+  std::vector<MoveGenerator> move_generators;
+  move_generators[pieces::pawn]   = moves::pawn;
+  move_generators[pieces::knight] = moves::knight;
+  move_generators[pieces::bishop] = moves::bishop;
+  move_generators[pieces::rook]   = moves::rook;
+  move_generators[pieces::queen]  = moves::queen;
+  move_generators[pieces::king]   = moves::king;
+  return move_generators;
+}();
 
+void moves::piece_moves(std::vector<Move>& moves, Piece piece, Board board, Occupancy occupancy, Bitboard en_passant_square) {
   Color us = colors::white, them = colors::black;
-  pawn  (moves, board[us][pieces::pawn],   occupancy[us], occupancy[them], en_passant_square);
-  knight(moves, board[us][pieces::knight], occupancy[us], occupancy[them]);
-  bishop(moves, board[us][pieces::bishop], occupancy[us], occupancy[them]);
-  rook  (moves, board[us][pieces::rook],   occupancy[us], occupancy[them]);
-  queen (moves, board[us][pieces::queen],  occupancy[us], occupancy[them]);
-  king  (moves, board[us][pieces::king],   occupancy[us], occupancy[them]);
+  move_generators_by_piece[piece](moves, board[us][piece], occupancy[us], occupancy[them], en_passant_square);
+}
+
+void moves::all_moves(std::vector<Move>& moves, Board board, Occupancy occupancy, Bitboard en_passant_square) {
+  Color us = colors::white, them = colors::black;
+  for (Piece piece: pieces::values)
+    move_generators_by_piece[piece](moves, board[us][piece], occupancy[us], occupancy[them], en_passant_square);
 }
 
 std::ostream& operator<<(std::ostream& o, const Move& m) {
-  o << "Move(" << squares::name_from_index(m.from()) <<
-       "->" << squares::name_from_index(m.to()) <<
+  o << "Move(" << squares::partition[m.from()].name <<
+       "->" << squares::partition[m.to()].name <<
        "; " << Move::typename_from_type(m.type()) <<
        ")";
   return o;

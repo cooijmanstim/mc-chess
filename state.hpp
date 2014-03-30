@@ -30,6 +30,17 @@ public:
 
   friend std::ostream& operator<<(std::ostream& o, const State& s);
 
-  std::vector<Move> moves();
-};
+  Occupancy occupancy() const;
 
+  std::vector<Move> moves() const;
+
+  Move parse_algebraic(std::string algebraic) const;
+  std::vector<Move> match_algebraic(Piece piece,
+                                    boost::optional<BoardPartition::Part> source_file,
+                                    boost::optional<BoardPartition::Part> source_rank,
+                                    bool is_capture,
+                                    squares::Index target) const;
+  void make_moves(std::string algebraic_variation);
+  void make_moves(std::vector<std::string> algebraic_moves);
+  void make_move(Move m);
+};
