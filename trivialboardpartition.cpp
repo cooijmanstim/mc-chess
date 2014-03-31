@@ -1,5 +1,6 @@
 #include <boost/format.hpp>
 
+#include "prettyprint.hpp"
 #include "trivialboardpartition.hpp"
 
 bool TrivialBoardPartition::Part::operator==(const Part& that) const { return this->bitboard == that.bitboard; }
@@ -42,7 +43,13 @@ TrivialBoardPartition::TrivialBoardPartition(std::initializer_list<std::string> 
 }
 
 TrivialBoardPartition::Part TrivialBoardPartition::operator[](Index index)      const { return parts_by_index[index]; }
-TrivialBoardPartition::Part TrivialBoardPartition::operator[](std::string name) const { return parts_by_name.at(name); }
+TrivialBoardPartition::Part TrivialBoardPartition::operator[](std::string name) const {
+  try {
+    return parts_by_name.at(name);
+  } catch (std::out_of_range& e) {
+    throw std::invalid_argument(str(boost::format("unknown part name: %1% in partition %2%") % name % parts_by_index));
+  }
+}
 
 std::vector<TrivialBoardPartition::Part>::const_iterator TrivialBoardPartition::begin() const { return parts_by_index.begin(); }
 std::vector<TrivialBoardPartition::Part>::const_iterator TrivialBoardPartition::end()   const { return parts_by_index.end(); }
