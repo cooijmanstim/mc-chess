@@ -23,11 +23,15 @@ public:
     double_push,
     castle_kingside,
     castle_queenside,
+    capture,
     promotion_knight,
     promotion_bishop,
     promotion_rook,
     promotion_queen,
-    capture,
+    capturing_promotion_knight,
+    capturing_promotion_bishop,
+    capturing_promotion_rook,
+    capturing_promotion_queen,
   };
 
   static std::string typename_from_type(Type type);
@@ -40,6 +44,8 @@ public:
   Type type() const;
   squares::Index from() const;
   squares::Index to  () const;
+
+  bool is_capture() const;
 
   bool operator==(const Move& that) const;
   bool operator!=(const Move& that) const;

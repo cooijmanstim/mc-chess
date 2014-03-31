@@ -18,11 +18,16 @@ std::string Move::typename_from_type(Type type) {
   case Type::double_push:      return "double_push";
   case Type::castle_kingside:  return "castle_kingside";
   case Type::castle_queenside: return "castle_queenside";
+  case Type::capture:          return "capture";
   case Type::promotion_knight: return "promotion_knight";
   case Type::promotion_bishop: return "promotion_bishop";
   case Type::promotion_rook:   return "promotion_rook";
   case Type::promotion_queen:  return "promotion_queen";
-  default: throw std::invalid_argument("undefined move type");
+  case Type::capturing_promotion_knight: return "capturing_promotion_knight";
+  case Type::capturing_promotion_bishop: return "capturing_promotion_bishop";
+  case Type::capturing_promotion_rook:   return "capturing_promotion_rook";
+  case Type::capturing_promotion_queen:  return "capturing_promotion_queen";
+  default: throw std::invalid_argument(str(boost::format("undefined move type: %|1$#x|") % (unsigned short)(type)));
   }
 }
 
@@ -47,6 +52,19 @@ Move& Move::operator=(const Move& that) {
 Move::Type Move::type() const { return static_cast<Move::Type>((move >> offset_type) & ((1 << nbits_type) - 1)); }
 squares::Index Move::from() const { return (move >> offset_from) & ((1 << nbits_from) - 1); }
 squares::Index Move::to  () const { return (move >> offset_to)   & ((1 << nbits_to)   - 1); }
+
+bool Move::is_capture() const {
+  switch (type()) {
+  case Move::Type::capture:
+  case Move::Type::capturing_promotion_knight:
+  case Move::Type::capturing_promotion_bishop:
+  case Move::Type::capturing_promotion_rook:
+  case Move::Type::capturing_promotion_queen:
+    return true;
+  default:
+    return false;
+  }
+}
 
 bool Move::operator==(const Move& that) const { return this->move == that.move; }
 bool Move::operator!=(const Move& that) const { return this->move != that.move; }

@@ -48,6 +48,6 @@ std::vector<TrivialBoardPartition::Part>::const_iterator TrivialBoardPartition::
 std::vector<TrivialBoardPartition::Part>::const_iterator TrivialBoardPartition::end()   const { return parts_by_index.end(); }
 
 std::ostream& operator<<(std::ostream& o, const TrivialBoardPartition::Part& p) {
-  o << boost::format("Part(index=%1%, name=%2%, bitboard=0x%|3$x|)") % p.index % p.name % p.bitboard;
+  o << boost::format("Part(index=%1%, name=%2%, bitboard=%|3$#x|)") % p.index % p.name % p.bitboard;
   return o;
 }

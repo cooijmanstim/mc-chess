@@ -24,6 +24,7 @@ class State {
 
 public:
   State();
+  State(std::string fen);
   ~State();
   State(State &that);
   bool operator==(State &that);

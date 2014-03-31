@@ -1,5 +1,8 @@
 #include <string>
+#include <cctype>
 
+#include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string_regex.hpp>
 #include <boost/format.hpp>
 
@@ -38,6 +41,57 @@ State::State()
   color_to_move = colors::white;
 
   en_passant_square = 0;
+}
+
+State::State(std::string fen)
+{
+  boost::regex fen_regex("((\\w+/){7}\\w+)\\s+([bw])\\s+(K)?(Q)?(k)?(q)?\\s+(([a-h][1-8])|-)\\s+.*");
+  boost::smatch m;
+  if (!boost::regex_match(fen, m, fen_regex))
+    throw std::runtime_error(str(boost::format("can't parse FEN: %1%") % fen));
+
+  std::string board(m[1].first, m[1].second);
+
+  boost::regex rank_separator("/");
+  std::vector<std::string> fen_ranks;
+  boost::algorithm::split_regex(fen_ranks, std::string(m[1].first, m[1].second), rank_separator);
+  std::reverse(fen_ranks.begin(), fen_ranks.end());
+
+  using namespace pieces;
+  squares::Index square_index = 0;
+  for (BoardPartition::Part rank: ranks::partition) {
+    assert(square_index == rank.index * 8);
+    for (char c: fen_ranks[rank.index]) {
+      if (isdigit(c)) {
+        short n = boost::lexical_cast<short>(c);
+        assert(1 <= n && n <= 8);
+        square_index += n;
+      } else {
+        Color owner = islower(c) ? colors::black : colors::white;
+        c = tolower(c);
+        Bitboard square = squares::partition[square_index];
+        switch (c) {
+        case 'p': this->board[owner][pawn]   |= square; break;
+        case 'n': this->board[owner][knight] |= square; break;
+        case 'b': this->board[owner][bishop] |= square; break;
+        case 'r': this->board[owner][rook]   |= square; break;
+        case 'q': this->board[owner][queen]  |= square; break;
+        case 'k': this->board[owner][king]   |= square; break;
+        default: throw std::runtime_error(str(boost::format("invalid FEN piece symbol %1% in FEN \"%2%\"") % c % fen));
+        }
+        square_index++;
+      }
+    }
+  }
+  assert(square_index == 64);
+
+  color_to_move = std::string(m[3].first, m[3].second) == "w" ? colors::white : colors::black;
+
+  can_castle_kingside  = {m[4].matched, m[6].matched};
+  can_castle_queenside = {m[5].matched, m[7].matched};
+
+  if (m[9].matched)
+    en_passant_square = squares::partition[std::string(m[9].first, m[9].second)];
 }
 
 State::State(State &that) :
@@ -123,7 +177,7 @@ Move State::parse_algebraic(std::string algebraic) const {
   boost::regex algebraic_move_regex("([NBRQK]?)([a-h]?)([1-8]?)(x?)([a-h][1-8])");
   boost::smatch m;
   if (!boost::regex_match(algebraic, m, algebraic_move_regex))
-    throw std::runtime_error(str(boost::format("can't parse algebraic move: %1") % algebraic));
+    throw std::runtime_error(str(boost::format("can't parse algebraic move: %1%") % algebraic));
 
   Piece piece = pieces::type_from_name(std::string(m[1].first, m[1].second));
 
@@ -137,9 +191,9 @@ Move State::parse_algebraic(std::string algebraic) const {
 
   std::vector<Move> candidates = match_algebraic(piece, source_file, source_rank, is_capture, target);
   if (candidates.empty())
-    throw std::runtime_error(str(boost::format("no match for algebraic move: %1") % algebraic));
+    throw std::runtime_error(str(boost::format("no match for algebraic move: %1%") % algebraic));
   if (candidates.size() > 1)
-    throw std::runtime_error(str(boost::format("ambiguous algebraic move: %1, candidates: %2") % algebraic % candidates));
+    throw std::runtime_error(str(boost::format("ambiguous algebraic move: %1%, candidates: %2%") % algebraic % candidates));
   return candidates[0];
 }
 
@@ -168,7 +222,7 @@ std::vector<Move> State::match_algebraic(Piece piece,
         return true;
       if (source_rank && !(*source_rank & squares::partition[candidate.from()]))
         return true;
-      if (is_capture && candidate.type() == Move::Type::capture)
+      if (is_capture && candidate.is_capture())
         return true;
       if (candidate.to() != target)
         return true;
