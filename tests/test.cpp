@@ -11,10 +11,6 @@
 #include "state.hpp"
 #include "moves.hpp"
 
-BOOST_AUTO_TEST_CASE(knight_attacks_on_border) {
-  BOOST_CHECK_EQUAL(moves::knight_attacks_ssw(squares::b1), 0);
-}
-
 BOOST_AUTO_TEST_CASE(initial_moves) {
   State state;
 

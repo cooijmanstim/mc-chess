@@ -58,14 +58,7 @@ public:
 namespace moves {
   Bitboard pawn_attacks_w(Bitboard pawn);
   Bitboard pawn_attacks_e(Bitboard pawn);
-  Bitboard knight_attacks_nnw(Bitboard knight);
-  Bitboard knight_attacks_ssw(Bitboard knight);
-  Bitboard knight_attacks_nww(Bitboard knight);
-  Bitboard knight_attacks_sww(Bitboard knight);
-  Bitboard knight_attacks_nne(Bitboard knight);
-  Bitboard knight_attacks_sse(Bitboard knight);
-  Bitboard knight_attacks_nee(Bitboard knight);
-  Bitboard knight_attacks_see(Bitboard knight);
+  Bitboard knight_attacks(Bitboard knight, short leftshift, short rightshift, Bitboard badtarget);
   Bitboard bishop_attacks(Bitboard occupancy, squares::Index source);
   Bitboard rook_attacks(Bitboard occupancy, squares::Index source);
   Bitboard queen_attacks(Bitboard occupancy, squares::Index source);

@@ -88,15 +88,26 @@ using namespace directions;
 Bitboard moves::pawn_attacks_w(Bitboard pawn) { return ((pawn & ~files::a) << vertical >> horizontal); }
 Bitboard moves::pawn_attacks_e(Bitboard pawn) { return ((pawn & ~files::h) << vertical << horizontal); }
 
-// FIXME: abstract this some way, pass in left and right shift count to target, and ungood source files
-Bitboard moves::knight_attacks_nnw(Bitboard knight) { return (knight & ~files::a)             << 2*vertical >>   horizontal; }
-Bitboard moves::knight_attacks_nww(Bitboard knight) { return (knight & ~files::a & ~files::b) <<   vertical >> 2*horizontal; }
-Bitboard moves::knight_attacks_nne(Bitboard knight) { return (knight & ~files::h)             << 2*vertical <<   horizontal; }
-Bitboard moves::knight_attacks_nee(Bitboard knight) { return (knight & ~files::h & ~files::g) <<   vertical << 2*horizontal; }
-Bitboard moves::knight_attacks_ssw(Bitboard knight) { return (knight & ~files::a)             >> 2*vertical >>   horizontal; }
-Bitboard moves::knight_attacks_sww(Bitboard knight) { return (knight & ~files::a & ~files::b) >>   vertical >> 2*horizontal; }
-Bitboard moves::knight_attacks_sse(Bitboard knight) { return (knight & ~files::h)             >> 2*vertical <<   horizontal; }
-Bitboard moves::knight_attacks_see(Bitboard knight) { return (knight & ~files::h & ~files::g) >>   vertical << 2*horizontal; }
+struct KnightAttackType {
+  unsigned short leftshift;
+  unsigned short rightshift;
+  Bitboard badtargets;
+};
+
+KnightAttackType knight_attack_types[] = {
+  {2*vertical +   horizontal,                         0, files::a           },
+  {               horizontal, 2*vertical               , files::a           },
+  {2*vertical               ,                horizontal, files::h           },
+  {                        0, 2*vertical +   horizontal, files::h           },
+  {  vertical + 2*horizontal,                         0, files::a | files::b},
+  {             2*horizontal,   vertical               , files::a | files::b},
+  {  vertical               ,              2*horizontal, files::g | files::h},
+  {                        0,   vertical + 2*horizontal, files::g | files::h},
+};
+
+Bitboard moves::knight_attacks(Bitboard knight, short leftshift, short rightshift, Bitboard badtarget) {
+  return (knight << leftshift >> rightshift) & ~badtarget;
+}
 
 Bitboard moves::bishop_attacks(Bitboard occupancy, squares::Index source) {
   return 
@@ -121,17 +132,15 @@ Bitboard moves::king_attacks(Bitboard king) {
 }
 
 Bitboard moves::all_attacks(Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers) {
+  Bitboard knight_attacks = 0;
+  for (KnightAttackType ka: knight_attack_types)
+    // TODO: dry up
+    knight_attacks |= moves::knight_attacks(attackers[pieces::knight], ka.leftshift, ka.rightshift, ka.badtargets);
+
   return
     pawn_attacks_w(attackers[pieces::pawn]) |
     pawn_attacks_e(attackers[pieces::pawn]) |
-    knight_attacks_nnw(attackers[pieces::knight]) |
-    knight_attacks_ssw(attackers[pieces::knight]) |
-    knight_attacks_nww(attackers[pieces::knight]) |
-    knight_attacks_sww(attackers[pieces::knight]) |
-    knight_attacks_nne(attackers[pieces::knight]) |
-    knight_attacks_sse(attackers[pieces::knight]) |
-    knight_attacks_nee(attackers[pieces::knight]) |
-    knight_attacks_see(attackers[pieces::knight]) |
+    knight_attacks |
     bishop_attacks(occupancy, attackers[pieces::bishop]) |
     rook_attacks(occupancy, attackers[pieces::rook]) |
     queen_attacks(occupancy, attackers[pieces::queen]) |
@@ -224,14 +233,21 @@ void moves::pawn(std::vector<Move>& moves, Bitboard pawn, Bitboard us, Bitboard 
 }
 
 void moves::knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitboard them, Bitboard en_passant_square) {
-  moves_from_targets(moves, knight_attacks_nnw(knight) & ~us, 2*south + east,  relative);
-  moves_from_targets(moves, knight_attacks_ssw(knight) & ~us, 2*north + east,  relative);
-  moves_from_targets(moves, knight_attacks_nww(knight) & ~us, 2*east  + south, relative);
-  moves_from_targets(moves, knight_attacks_sww(knight) & ~us, 2*east  + north, relative);
-  moves_from_targets(moves, knight_attacks_nne(knight) & ~us, 2*south + west,  relative);
-  moves_from_targets(moves, knight_attacks_sse(knight) & ~us, 2*north + west,  relative);
-  moves_from_targets(moves, knight_attacks_nee(knight) & ~us, 2*west  + south, relative);
-  moves_from_targets(moves, knight_attacks_see(knight) & ~us, 2*west  + north, relative);
+  for (KnightAttackType ka: knight_attack_types) {
+    // TODO: dry up
+    bitboard::for_each_member(knight_attacks(knight, ka.leftshift, ka.rightshift, ka.badtargets | us) & ~them,
+                              [&moves, &ka](squares::Index target) {
+                                moves.push_back(Move(target - ka.leftshift + ka.rightshift,
+                                                     target,
+                                                     Move::Type::normal));
+                              });
+    bitboard::for_each_member(knight_attacks(knight, ka.leftshift, ka.rightshift, ka.badtargets | us) &  them,
+                              [&moves, &ka](squares::Index target) {
+                                moves.push_back(Move(target - ka.leftshift + ka.rightshift,
+                                                     target,
+                                                     Move::Type::capture));
+                              });
+  }
 }
 
 void moves::bishop(std::vector<Move>& moves, Bitboard bishop, Bitboard us, Bitboard them, Bitboard en_passant_square) {
