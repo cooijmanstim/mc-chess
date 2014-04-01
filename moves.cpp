@@ -88,12 +88,11 @@ using namespace directions;
 Bitboard moves::pawn_attacks_w(Bitboard pawn) { return ((pawn & ~files::a) << vertical >> horizontal); }
 Bitboard moves::pawn_attacks_e(Bitboard pawn) { return ((pawn & ~files::h) << vertical << horizontal); }
 
+// FIXME: abstract this some way, pass in left and right shift count to target, and ungood source files
 Bitboard moves::knight_attacks_nnw(Bitboard knight) { return (knight & ~files::a)             << 2*vertical >>   horizontal; }
 Bitboard moves::knight_attacks_nww(Bitboard knight) { return (knight & ~files::a & ~files::b) <<   vertical >> 2*horizontal; }
 Bitboard moves::knight_attacks_nne(Bitboard knight) { return (knight & ~files::h)             << 2*vertical <<   horizontal; }
 Bitboard moves::knight_attacks_nee(Bitboard knight) { return (knight & ~files::h & ~files::g) <<   vertical << 2*horizontal; }
-
-// NOTE: shifting in the other direction to avoid negative shifts
 Bitboard moves::knight_attacks_ssw(Bitboard knight) { return (knight & ~files::a)             >> 2*vertical >>   horizontal; }
 Bitboard moves::knight_attacks_sww(Bitboard knight) { return (knight & ~files::a & ~files::b) >>   vertical >> 2*horizontal; }
 Bitboard moves::knight_attacks_sse(Bitboard knight) { return (knight & ~files::h)             >> 2*vertical <<   horizontal; }
@@ -179,7 +178,7 @@ void moves::pawn(std::vector<Move>& moves, Bitboard pawn, Bitboard us, Bitboard 
                             });
 
   // double push
-  bitboard::for_each_member((pawn << 2*vertical) & empty,
+  bitboard::for_each_member((((pawn << vertical) & empty) << vertical) & empty,
                             [&moves](squares::Index target) {
                               moves.push_back(Move(target + 2*south,
                                                    target,
@@ -187,11 +186,41 @@ void moves::pawn(std::vector<Move>& moves, Bitboard pawn, Bitboard us, Bitboard 
                             });
 
   // captures
-  // FIXME: promotion
-  moves_from_targets(moves, pawn_attacks_w(pawn) & (them | en_passant_square),
-                     south + east, relative);
-  moves_from_targets(moves, pawn_attacks_e(pawn) & (them | en_passant_square),
-                     south + west, relative);
+  // TODO: dry up
+  bitboard::for_each_member(pawn_attacks_w(pawn) & (them | en_passant_square),
+                            [&moves](squares::Index target) {
+                              if (ranks::partition.parts_by_square_index[target] == ranks::_8) {
+                                for (Move::Type promotion: {Move::Type::capturing_promotion_knight,
+                                                            Move::Type::capturing_promotion_bishop,
+                                                            Move::Type::capturing_promotion_rook,
+                                                            Move::Type::capturing_promotion_queen}) {
+                                  moves.push_back(Move(target + south + east,
+                                                       target,
+                                                       promotion));
+                                }
+                              } else {
+                                moves.push_back(Move(target + south + east,
+                                                     target,
+                                                     Move::Type::capture));
+                              }
+                            });
+  bitboard::for_each_member(pawn_attacks_e(pawn) & (them | en_passant_square),
+                            [&moves](squares::Index target) {
+                              if (ranks::partition.parts_by_square_index[target] == ranks::_8) {
+                                for (Move::Type promotion: {Move::Type::capturing_promotion_knight,
+                                                            Move::Type::capturing_promotion_bishop,
+                                                            Move::Type::capturing_promotion_rook,
+                                                            Move::Type::capturing_promotion_queen}) {
+                                  moves.push_back(Move(target + south + west,
+                                                       target,
+                                                       promotion));
+                                }
+                              } else {
+                                moves.push_back(Move(target + south + west,
+                                                     target,
+                                                     Move::Type::capture));
+                              }
+                            });
 }
 
 void moves::knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitboard them, Bitboard en_passant_square) {
