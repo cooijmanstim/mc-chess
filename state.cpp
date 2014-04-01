@@ -11,11 +11,7 @@
 
 State::State()
 {
-  for (size_t i = 0; i < colors::cardinality; i++) {
-    for (size_t j = 0; j < pieces::cardinality; j++) {
-      board[i][j] = 0;
-    }
-  }
+  empty_board();
 
   using namespace colors;
   using namespace pieces;
@@ -58,6 +54,7 @@ State::State(std::string fen)
   std::reverse(fen_ranks.begin(), fen_ranks.end());
 
   using namespace pieces;
+  empty_board();
   squares::Index square_index = 0;
   for (BoardPartition::Part rank: ranks::partition) {
     assert(square_index == rank.index * 8);
@@ -105,7 +102,15 @@ State::State(State &that) :
 
 State::~State() {}
 
-bool State::operator==(State &that) {
+void State::empty_board() {
+  for (size_t i = 0; i < colors::cardinality; i++) {
+    for (size_t j = 0; j < pieces::cardinality; j++) {
+      board[i][j] = 0;
+    }
+  }
+}
+
+bool State::operator==(const State &that) const {
   if (this == &that)
     return true;
   

@@ -11,6 +11,7 @@
 #include "moves.hpp"
 
 class State {
+public:
   Board board;
 
   // false iff the relevant rook or king has moved.
@@ -22,12 +23,13 @@ class State {
 
   Color color_to_move;
 
-public:
   State();
   State(std::string fen);
   ~State();
   State(State &that);
-  bool operator==(State &that);
+  bool operator==(const State &that) const;
+
+  void empty_board();
 
   friend std::ostream& operator<<(std::ostream& o, const State& s);
 
