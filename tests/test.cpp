@@ -3,6 +3,7 @@
 #include <boost/algorithm/cxx11/all_of.hpp>
 #include <boost/assign/list_of.hpp>
 
+#include <iostream>
 #include <algorithm>
 
 #include "util.hpp"
@@ -45,7 +46,27 @@ BOOST_AUTO_TEST_CASE(initial_moves) {
 BOOST_AUTO_TEST_CASE(various_moves) {
   State state("r1b2rk1/pp1P1p1p/q1p2n2/2N2PpB/1NP2bP1/2R1B3/PP2Q2P/R3K3 w Q g6 0 1");
 
+  using namespace colors;
+  using namespace pieces;
   using namespace squares;
+  BOOST_CHECK_EQUAL(state.board[white][pawn],   a2 | b2 | c4 | d7 | f5 | g4 | h2);
+  BOOST_CHECK_EQUAL(state.board[white][knight], b4 | c5);
+  BOOST_CHECK_EQUAL(state.board[white][bishop], e3 | h5);
+  BOOST_CHECK_EQUAL(state.board[white][rook],   a1 | c3);
+  BOOST_CHECK_EQUAL(state.board[white][queen],  e2.bitboard);
+  BOOST_CHECK_EQUAL(state.board[white][king],   e1.bitboard);
+  BOOST_CHECK_EQUAL(state.board[black][pawn],   a7 | b7 | c6 | f7 | g5 | h7);
+  BOOST_CHECK_EQUAL(state.board[black][knight], f6.bitboard);
+  BOOST_CHECK_EQUAL(state.board[black][bishop], c8 | f4);
+  BOOST_CHECK_EQUAL(state.board[black][rook],   a8 | f8);
+  BOOST_CHECK_EQUAL(state.board[black][queen],  a6.bitboard);
+  BOOST_CHECK_EQUAL(state.board[black][king],   g8.bitboard);
+  BOOST_CHECK_EQUAL(state.en_passant_square,    g6.bitboard);
+  BOOST_CHECK(!state.can_castle_kingside[white]);
+  BOOST_CHECK(!state.can_castle_kingside[black]);
+  BOOST_CHECK( state.can_castle_queenside[white]);
+  BOOST_CHECK(!state.can_castle_queenside[black]);
+  BOOST_CHECK_EQUAL(state.color_to_move, white);
 
   std::set<Move> expected_moves;
 
@@ -54,9 +75,9 @@ BOOST_AUTO_TEST_CASE(various_moves) {
     expected_moves.emplace(Move(a1.index, target.index, Move::Type::normal));
 
   // e1 king
-  for (BoardPartition::Part target: {d1, f1})
+  for (BoardPartition::Part target: {d1, f1, d2, f2})
     expected_moves.emplace(Move(e1.index, target.index, Move::Type::normal));
-  expected_moves.emplace(Move(e1.index, c1.index, Move::Type::castle_kingside));
+  expected_moves.emplace(Move(e1.index, c1.index, Move::Type::castle_queenside));
 
   // a2 pawn
   expected_moves.emplace(Move(a2.index, a3.index, Move::Type::normal));
@@ -64,7 +85,6 @@ BOOST_AUTO_TEST_CASE(various_moves) {
 
   // b2 pawn
   expected_moves.emplace(Move(b2.index, b3.index, Move::Type::normal));
-  expected_moves.emplace(Move(b2.index, b4.index, Move::Type::double_push));
 
   // e2 queen
   for (BoardPartition::Part target: {f1, f2, g2, f3, d3, d2, c2, d1})
@@ -94,7 +114,7 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   // g4 pawn
 
   // c5 knight
-  for (BoardPartition::Part target: {e6, e4, d3, b3})
+  for (BoardPartition::Part target: {e6, e4, d3, b3, a4})
     expected_moves.emplace(Move(c5.index, target.index, Move::Type::normal));
   for (BoardPartition::Part target: {a6, b7})
     expected_moves.emplace(Move(c5.index, target.index, Move::Type::capture));
