@@ -7,6 +7,7 @@
 
 #include "moves.hpp"
 #include "direction.hpp"
+#include "knight.hpp"
 
 // routines for generating moves for White.  flip the bitboards vertically and swap ownership
 // to make them applicable for Black.
@@ -88,23 +89,6 @@ using namespace directions;
 Bitboard moves::pawn_attacks_w(Bitboard pawn) { return ((pawn & ~files::a) << vertical >> horizontal); }
 Bitboard moves::pawn_attacks_e(Bitboard pawn) { return ((pawn & ~files::h) << vertical << horizontal); }
 
-struct KnightAttackType {
-  unsigned short leftshift;
-  unsigned short rightshift;
-  Bitboard badtargets;
-};
-
-KnightAttackType knight_attack_types[] = {
-  {2*vertical +   horizontal,                         0, files::a           },
-  {               horizontal, 2*vertical               , files::a           },
-  {2*vertical               ,                horizontal, files::h           },
-  {                        0, 2*vertical +   horizontal, files::h           },
-  {  vertical + 2*horizontal,                         0, files::a | files::b},
-  {             2*horizontal,   vertical               , files::a | files::b},
-  {  vertical               ,              2*horizontal, files::g | files::h},
-  {                        0,   vertical + 2*horizontal, files::g | files::h},
-};
-
 Bitboard moves::knight_attacks(Bitboard knight, short leftshift, short rightshift, Bitboard badtarget) {
   return (knight << leftshift >> rightshift) & ~badtarget;
 }
@@ -133,7 +117,7 @@ Bitboard moves::king_attacks(Bitboard king) {
 
 Bitboard moves::all_attacks(Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers) {
   Bitboard knight_attacks = 0;
-  for (KnightAttackType ka: knight_attack_types)
+  for (KnightAttackType ka: get_knight_attack_types())
     // TODO: dry up
     knight_attacks |= moves::knight_attacks(attackers[pieces::knight], ka.leftshift, ka.rightshift, ka.badtargets);
 
@@ -233,10 +217,15 @@ void moves::pawn(std::vector<Move>& moves, Bitboard pawn, Bitboard us, Bitboard 
 }
 
 void moves::knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitboard them, Bitboard en_passant_square) {
-  for (KnightAttackType ka: knight_attack_types) {
+  for (KnightAttackType ka: get_knight_attack_types()) {
     // TODO: dry up
     bitboard::for_each_member(knight_attacks(knight, ka.leftshift, ka.rightshift, ka.badtargets | us) & ~them,
-                              [&moves, &ka](squares::Index target) {
+                              [&moves, &ka, knight, us](squares::Index target) {
+                                if (target == squares::a3.index && (target - ka.leftshift + ka.rightshift) == squares::g1.index) {
+                                  std::cerr << boost::format("g1->a3: source %|1$#x| left %2% right %3% badtargets %|4$#x| us %|5$#x|")
+                                                             % knight % ka.leftshift % ka.rightshift % ka.badtargets % us
+                                            << std::endl;
+                                }
                                 moves.push_back(Move(target - ka.leftshift + ka.rightshift,
                                                      target,
                                                      Move::Type::normal));

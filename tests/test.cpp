@@ -11,6 +11,12 @@
 #include "state.hpp"
 #include "moves.hpp"
 
+BOOST_AUTO_TEST_CASE(partitions) {
+  using namespace squares;
+  BOOST_CHECK_EQUAL(files::a,  a1 | a2 | a3 | a4 | a5 | a6 | a7 | a8);
+  BOOST_CHECK_EQUAL(ranks::_8, a8 | b8 | c8 | d8 | e8 | f8 | g8 | h8);
+}
+
 BOOST_AUTO_TEST_CASE(initial_moves) {
   State state;
 
