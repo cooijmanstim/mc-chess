@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   expected_moves.emplace(Move(e3.index, f4.index, Move::Type::capture));
 
   // b4 knight
-  for (BoardPartition::Part target: {a6, d5, d3, c2})
+  for (BoardPartition::Part target: {d5, d3, c2})
     expected_moves.emplace(Move(b4.index, target.index, Move::Type::normal));
   for (BoardPartition::Part target: {a6, c6})
     expected_moves.emplace(Move(b4.index, target.index, Move::Type::capture));
