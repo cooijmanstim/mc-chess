@@ -263,17 +263,16 @@ void moves::king(std::vector<Move>& moves, Bitboard king, Bitboard us, Bitboard 
 
 
 // these assume castling rights have not been lost, i.e., the king and the relevant rook have not moved
-// FIXME: never called?
 void moves::castle_kingside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers) {
   using namespace squares;
-  if (!is_attacked(e1 | f1 | g1, occupancy, attackers))
-    moves.push_back(Move(e1, g1, Move::Type::castle_kingside));
+  if (!is_attacked(e1 | f1 | g1, occupancy, attackers) && !(occupancy & (f1 | g1)))
+    moves.push_back(Move(e1.index, g1.index, Move::Type::castle_kingside));
 }
 
 void moves::castle_queenside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers) {
   using namespace squares;
-  if (!is_attacked(e1 | d1 | c1 | b1, occupancy, attackers))
-    moves.push_back(Move(e1, c1, Move::Type::castle_queenside));
+  if (!is_attacked(e1 | d1 | c1 | b1, occupancy, attackers) && !(occupancy & (d1 | c1 | b1)))
+    moves.push_back(Move(e1.index, c1.index, Move::Type::castle_queenside));
 }
 
 typedef std::function<void(std::vector<Move>& moves, Bitboard piece, Bitboard us, Bitboard them, Bitboard en_passant_square)> MoveGenerator;
@@ -295,10 +294,13 @@ void moves::piece_moves(std::vector<Move>& moves, Piece piece, Board board, Occu
   move_generators_by_piece[piece](moves, board[us][piece], occupancy[us], occupancy[them], en_passant_square);
 }
 
-void moves::all_moves(std::vector<Move>& moves, Board board, Occupancy occupancy, Bitboard en_passant_square) {
+void moves::all_moves(std::vector<Move>& moves, Board board, Occupancy occupancy, Bitboard en_passant_square,
+                      bool can_castle_kingside, bool can_castle_queenside) {
   Color us = colors::white, them = colors::black;
   for (Piece piece: pieces::values)
     move_generators_by_piece[piece](moves, board[us][piece], occupancy[us], occupancy[them], en_passant_square);
+  if (can_castle_kingside)  castle_kingside (moves, occupancy[us] | occupancy[them], board[them]);
+  if (can_castle_queenside) castle_queenside(moves, occupancy[us] | occupancy[them], board[them]);
 }
 
 std::ostream& operator<<(std::ostream& o, const Move& m) {

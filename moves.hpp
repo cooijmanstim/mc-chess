@@ -77,5 +77,6 @@ namespace moves {
   void castle_queenside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
 
   void piece_moves(std::vector<Move>& moves, Piece piece, Board board, Occupancy occupancy, Bitboard en_passant_square);
-  void all_moves(std::vector<Move>& moves, Board board, Occupancy occupancy, Bitboard en_passant_square);
+  void all_moves(std::vector<Move>& moves, Board board, Occupancy occupancy, Bitboard en_passant_square,
+                 bool can_castle_kingside, bool can_castle_queenside);
 }

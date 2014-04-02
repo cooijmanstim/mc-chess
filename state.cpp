@@ -174,7 +174,9 @@ std::vector<Move> State::moves() const {
 
   // TODO: maybe reserve()
   std::vector<Move> moves;
-  moves::all_moves(moves, board, occupancy(), en_passant_square);
+  moves::all_moves(moves, board, occupancy(), en_passant_square,
+                   can_castle_kingside [colors::white],
+                   can_castle_queenside[colors::white]);
   return moves;
 }
 
