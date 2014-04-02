@@ -70,6 +70,8 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   BOOST_CHECK(!state.can_castle_queenside[black]);
   BOOST_CHECK_EQUAL(state.color_to_move, white);
 
+  std::cout << state << std::endl;
+
   std::set<Move> expected_moves;
 
   // a1 rook

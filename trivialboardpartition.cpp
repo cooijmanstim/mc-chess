@@ -42,7 +42,10 @@ TrivialBoardPartition::TrivialBoardPartition(std::initializer_list<std::string> 
 {
 }
 
-TrivialBoardPartition::Part TrivialBoardPartition::operator[](Index index)      const { return parts_by_index[index]; }
+TrivialBoardPartition::Part TrivialBoardPartition::operator[](Index index)      const {
+  assert(index < parts_by_index.size());
+  return parts_by_index[index];
+}
 TrivialBoardPartition::Part TrivialBoardPartition::operator[](std::string name) const {
   try {
     return parts_by_name.at(name);

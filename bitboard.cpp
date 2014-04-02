@@ -22,3 +22,7 @@ void bitboard::for_each_member(Bitboard b, std::function<void(size_t)> f) {
     f(scan_forward_with_reset(b));
   }
 }
+
+Bitboard bitboard::flip_vertically(Bitboard b) {
+  return __builtin_bswap64(b);
+}

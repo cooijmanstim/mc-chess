@@ -115,27 +115,50 @@ Bitboard moves::king_attacks(Bitboard king) {
   return leftright | (triple << vertical) | (triple >> vertical);
 }
 
-Bitboard moves::all_attacks(Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers) {
+// NOTE: includes attacks on own pieces
+Bitboard moves::all_attacks(Bitboard occupancy, Board board) {
+  std::array<Bitboard, pieces::cardinality> attackers = board[colors::white];
+
   Bitboard knight_attacks = 0;
   for (KnightAttackType ka: get_knight_attack_types())
     // TODO: dry up
     knight_attacks |= moves::knight_attacks(attackers[pieces::knight], ka.leftshift, ka.rightshift, ka.badtargets);
 
+  // TODO: dry up
+  Bitboard bishop_attacks = 0;
+  bitboard::for_each_member(attackers[pieces::bishop], [&bishop_attacks, &occupancy](squares::Index source) {
+      bishop_attacks |= moves::bishop_attacks(occupancy, source);
+    });
+
+  Bitboard rook_attacks = 0;
+  bitboard::for_each_member(attackers[pieces::rook], [&rook_attacks, &occupancy](squares::Index source) {
+      rook_attacks |= moves::rook_attacks(occupancy, source);
+    });
+
+  Bitboard queen_attacks = 0;
+  bitboard::for_each_member(attackers[pieces::queen], [&queen_attacks, &occupancy](squares::Index source) {
+      queen_attacks |= moves::queen_attacks(occupancy, source);
+    });
+
   return
     pawn_attacks_w(attackers[pieces::pawn]) |
     pawn_attacks_e(attackers[pieces::pawn]) |
-    knight_attacks |
-    bishop_attacks(occupancy, attackers[pieces::bishop]) |
-    rook_attacks(occupancy, attackers[pieces::rook]) |
-    queen_attacks(occupancy, attackers[pieces::queen]) |
-    king_attacks(attackers[pieces::king]);
+    king_attacks  (attackers[pieces::king]) |
+    knight_attacks | bishop_attacks | rook_attacks | queen_attacks;
 }
 
-bool moves::is_attacked(Bitboard targets, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers) {
-  // TODO: can be done more cheaply; calculate ray attacks from the targets
-  return !bitboard::is_empty(all_attacks(occupancy, attackers) & targets);
+Bitboard moves::black_attacks(Bitboard occupancy, Board board) {
+  // view the board from the perspective of black to generate black's attacks
+  using namespace colors;
+  Bitboard b_occupancy = bitboard::flip_vertically(occupancy);
+  Board b_board;
+  for (Piece piece: pieces::values) {
+    b_board[white][piece] = bitboard::flip_vertically(board[black][piece]);
+    b_board[black][piece] = bitboard::flip_vertically(board[white][piece]);
+  }
+  Bitboard b_attacks = all_attacks(b_occupancy, b_board);
+  return bitboard::flip_vertically(b_attacks);
 }
-
 
 enum Relativity {
   absolute=0, relative = 1
@@ -261,17 +284,19 @@ void moves::king(std::vector<Move>& moves, Bitboard king, Bitboard us, Bitboard 
   moves_from_targets(moves, king_attacks(king) & ~us, squares::index_from_bitboard(king), absolute);
 }
 
-
-// these assume castling rights have not been lost, i.e., the king and the relevant rook have not moved
-void moves::castle_kingside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers) {
+// NOTE: can_castle_{king,queen}side convey that castling rights have not been lost,
+// i.e., the king and the relevant rook have not moved
+void moves::castle(std::vector<Move>& moves, Bitboard occupancy, Board board,
+                   bool can_castle_kingside, bool can_castle_queenside) {
   using namespace squares;
-  if (!is_attacked(e1 | f1 | g1, occupancy, attackers) && !(occupancy & (f1 | g1)))
+  Bitboard attacks = black_attacks(occupancy, board);
+  if (can_castle_kingside &&
+      !(attacks & (e1 | f1 | g1)) &&
+      !(occupancy & (f1 | g1)))
     moves.push_back(Move(e1.index, g1.index, Move::Type::castle_kingside));
-}
-
-void moves::castle_queenside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers) {
-  using namespace squares;
-  if (!is_attacked(e1 | d1 | c1 | b1, occupancy, attackers) && !(occupancy & (d1 | c1 | b1)))
+  if (can_castle_queenside &&
+      !(attacks & (e1 | d1 | c1 | b1)) &&
+      !(occupancy & (d1 | c1 | b1)))
     moves.push_back(Move(e1.index, c1.index, Move::Type::castle_queenside));
 }
 
@@ -299,8 +324,8 @@ void moves::all_moves(std::vector<Move>& moves, Board board, Occupancy occupancy
   Color us = colors::white, them = colors::black;
   for (Piece piece: pieces::values)
     move_generators_by_piece[piece](moves, board[us][piece], occupancy[us], occupancy[them], en_passant_square);
-  if (can_castle_kingside)  castle_kingside (moves, occupancy[us] | occupancy[them], board[them]);
-  if (can_castle_queenside) castle_queenside(moves, occupancy[us] | occupancy[them], board[them]);
+  castle(moves, occupancy[us] | occupancy[them], board,
+         can_castle_kingside, can_castle_queenside);
 }
 
 std::ostream& operator<<(std::ostream& o, const Move& m) {

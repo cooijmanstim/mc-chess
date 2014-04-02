@@ -11,4 +11,5 @@ namespace bitboard {
   size_t scan_forward_with_reset(Bitboard& b);
   bool is_empty(Bitboard b);
   void for_each_member(Bitboard b, std::function<void(size_t)> f);
+  Bitboard flip_vertically(Bitboard b);
 }

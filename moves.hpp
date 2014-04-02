@@ -64,8 +64,8 @@ namespace moves {
   Bitboard queen_attacks(Bitboard occupancy, squares::Index source);
   Bitboard king_attacks(Bitboard king);
   
-  Bitboard all_attacks(Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
-  bool is_attacked(Bitboard targets, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
+  Bitboard all_attacks(Bitboard occupancy, Board board);
+  Bitboard black_attacks(Bitboard occupancy, Board board);
   
   void pawn(std::vector<Move>& moves, Bitboard pawn, Bitboard us, Bitboard them, Bitboard en_passant_square);
   void knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitboard them, Bitboard en_passant_square);
@@ -73,8 +73,8 @@ namespace moves {
   void rook(std::vector<Move>& moves, Bitboard rook, Bitboard us, Bitboard them, Bitboard en_passant_square);
   void queen(std::vector<Move>& moves, Bitboard queen, Bitboard us, Bitboard them, Bitboard en_passant_square);
   void king(std::vector<Move>& moves, Bitboard king, Bitboard us, Bitboard them, Bitboard en_passant_square);
-  void castle_kingside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
-  void castle_queenside(std::vector<Move>& moves, Bitboard occupancy, std::array<Bitboard, pieces::cardinality> attackers);
+  void castle(std::vector<Move>& moves, Bitboard occupancy, Board board,
+              bool can_castle_kingside, bool can_castle_queenside);
 
   void piece_moves(std::vector<Move>& moves, Piece piece, Board board, Occupancy occupancy, Bitboard en_passant_square);
   void all_moves(std::vector<Move>& moves, Board board, Occupancy occupancy, Bitboard en_passant_square,
