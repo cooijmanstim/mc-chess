@@ -1,20 +1,27 @@
+#include <iostream>
+#include <algorithm>
+
 #define BOOST_TEST_MODULE test
 #include <boost/test/included/unit_test.hpp>
 #include <boost/algorithm/cxx11/all_of.hpp>
 #include <boost/assign/list_of.hpp>
-
-#include <iostream>
-#include <algorithm>
+#include <boost/format.hpp>
 
 #include "util.hpp"
 #include "direction.hpp"
 #include "state.hpp"
 #include "moves.hpp"
 
+// NOTE: evaluates arguments twice
+#define BOOST_CHECK_BITBOARDS_EQUAL(a, b) \
+  BOOST_CHECK_MESSAGE((a) == (b), boost::format("%|1$#x| != %|2$#x|") % (a) % (b));
+
 BOOST_AUTO_TEST_CASE(partitions) {
   using namespace squares;
-  BOOST_CHECK_EQUAL(files::a,  a1 | a2 | a3 | a4 | a5 | a6 | a7 | a8);
-  BOOST_CHECK_EQUAL(ranks::_8, a8 | b8 | c8 | d8 | e8 | f8 | g8 | h8);
+  BOOST_CHECK_BITBOARDS_EQUAL(files::a,  a1 | a2 | a3 | a4 | a5 | a6 | a7 | a8);
+  BOOST_CHECK_BITBOARDS_EQUAL(ranks::_8, a8 | b8 | c8 | d8 | e8 | f8 | g8 | h8);
+  BOOST_CHECK_BITBOARDS_EQUAL(antidiagonals::a1h8, a1 | b2 | c3 | d4 | e5 | f6 | g7 | h8);
+  BOOST_CHECK_BITBOARDS_EQUAL(    diagonals::a8h1, a8 | b7 | c6 | d5 | e4 | f3 | g2 | h1);
 }
 
 BOOST_AUTO_TEST_CASE(initial_moves) {
@@ -45,25 +52,49 @@ BOOST_AUTO_TEST_CASE(initial_moves) {
   BOOST_CHECK_MESSAGE(falsepositives.empty(), "illegal moves generated: " << falsepositives);
 }
 
+BOOST_AUTO_TEST_CASE(rays_every_which_way) {
+  TrivialBoardPartition::Part bishop_square = squares::f5,
+                              rook_square = squares::c3;
+  Bitboard diagonal = diagonals::partition.parts_by_square_index[bishop_square.index],
+           antidiagonal = antidiagonals::partition.parts_by_square_index[bishop_square.index],
+           rank = ranks::partition.parts_by_square_index[rook_square.index],
+           file = files::partition.parts_by_square_index[rook_square.index];
+  BOOST_CHECK_BITBOARDS_EQUAL(moves::slides(bishop_square.bitboard, bishop_square.bitboard, diagonal),
+                              0x0408100040800000);
+  BOOST_CHECK_BITBOARDS_EQUAL(moves::slides(bishop_square.bitboard, bishop_square.bitboard, antidiagonal),
+                              0x0080400010080402);
+  
+  BOOST_CHECK_BITBOARDS_EQUAL(moves::slides(rook_square.bitboard, rook_square.bitboard, rank),
+                              0x0000000000fc0000);
+  BOOST_CHECK_BITBOARDS_EQUAL(moves::slides(rook_square.bitboard, rook_square.bitboard, file),
+                              0x0404040404000404);
+
+  State state("8/8/8/5B2/8/2R5/8/8 w - - 0 1");
+  BOOST_CHECK_BITBOARDS_EQUAL(moves::bishop_attacks(state.flat_occupancy(), squares::f5.index),
+                              0x0488592050880402);
+  BOOST_CHECK_BITBOARDS_EQUAL(moves::rook_attacks(state.flat_occupancy(), squares::c3.index),
+                              0x0404040404fc0404);
+}
+
 BOOST_AUTO_TEST_CASE(various_moves) {
   State state("r1b2rk1/pp1P1p1p/q1p2n2/2N2PpB/1NP2bP1/2R1B3/PP2Q2P/R3K3 w Q g6 0 1");
 
   using namespace colors;
   using namespace pieces;
   using namespace squares;
-  BOOST_CHECK_EQUAL(state.board[white][pawn],   a2 | b2 | c4 | d7 | f5 | g4 | h2);
-  BOOST_CHECK_EQUAL(state.board[white][knight], b4 | c5);
-  BOOST_CHECK_EQUAL(state.board[white][bishop], e3 | h5);
-  BOOST_CHECK_EQUAL(state.board[white][rook],   a1 | c3);
-  BOOST_CHECK_EQUAL(state.board[white][queen],  e2.bitboard);
-  BOOST_CHECK_EQUAL(state.board[white][king],   e1.bitboard);
-  BOOST_CHECK_EQUAL(state.board[black][pawn],   a7 | b7 | c6 | f7 | g5 | h7);
-  BOOST_CHECK_EQUAL(state.board[black][knight], f6.bitboard);
-  BOOST_CHECK_EQUAL(state.board[black][bishop], c8 | f4);
-  BOOST_CHECK_EQUAL(state.board[black][rook],   a8 | f8);
-  BOOST_CHECK_EQUAL(state.board[black][queen],  a6.bitboard);
-  BOOST_CHECK_EQUAL(state.board[black][king],   g8.bitboard);
-  BOOST_CHECK_EQUAL(state.en_passant_square,    g6.bitboard);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.board[white][pawn],   a2 | b2 | c4 | d7 | f5 | g4 | h2);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.board[white][knight], b4 | c5);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.board[white][bishop], e3 | h5);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.board[white][rook],   a1 | c3);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.board[white][queen],  e2.bitboard);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.board[white][king],   e1.bitboard);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.board[black][pawn],   a7 | b7 | c6 | f7 | g5 | h7);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.board[black][knight], f6.bitboard);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.board[black][bishop], c8 | f4);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.board[black][rook],   a8 | f8);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.board[black][queen],  a6.bitboard);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.board[black][king],   g8.bitboard);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.en_passant_square,    g6.bitboard);
   BOOST_CHECK(!state.can_castle_kingside[white]);
   BOOST_CHECK(!state.can_castle_kingside[black]);
   BOOST_CHECK( state.can_castle_queenside[white]);
@@ -71,6 +102,9 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   BOOST_CHECK_EQUAL(state.color_to_move, white);
 
   std::cout << state << std::endl;
+
+  BOOST_CHECK_BITBOARDS_EQUAL(moves::rook_attacks(state.flat_occupancy(), squares::c3.index),
+                              0x00000000041e0404);
 
   std::set<Move> expected_moves;
 

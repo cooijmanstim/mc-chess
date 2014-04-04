@@ -215,6 +215,15 @@ Occupancy State::occupancy() const {
   return occupancy;
 }
 
+Bitboard State::flat_occupancy() const {
+  Bitboard occupancy = 0;
+  for (Color c: colors::values) {
+    for (Piece p: pieces::values)
+      occupancy |= board[c][p];
+  }
+  return occupancy;
+}
+
 std::vector<Move> State::match_algebraic(Piece piece,
                                          boost::optional<BoardPartition::Part> source_file,
                                          boost::optional<BoardPartition::Part> source_rank,

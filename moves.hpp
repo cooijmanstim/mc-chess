@@ -56,6 +56,8 @@ public:
 
 
 namespace moves {
+  Bitboard slides(Bitboard occupancy, Bitboard piece, Bitboard mobilityMask);
+
   Bitboard pawn_attacks_w(Bitboard pawn);
   Bitboard pawn_attacks_e(Bitboard pawn);
   Bitboard knight_attacks(Bitboard knight, short leftshift, short rightshift, Bitboard badtarget);

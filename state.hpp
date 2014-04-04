@@ -34,6 +34,7 @@ public:
   friend std::ostream& operator<<(std::ostream& o, const State& s);
 
   Occupancy occupancy() const;
+  Bitboard flat_occupancy() const;
 
   std::vector<Move> moves() const;
 
