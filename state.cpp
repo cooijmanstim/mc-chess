@@ -41,7 +41,7 @@ State::State()
 
 State::State(std::string fen)
 {
-  boost::regex fen_regex("((\\w+/){7}\\w+)\\s+([bw])\\s+(K)?(Q)?(k)?(q)?\\s+(([a-h][1-8])|-)\\s+.*");
+  boost::regex fen_regex("((\\w+/){7}\\w+)\\s+([bw])\\s+((K)?(Q)?(k)?(q)?|-)\\s+(([a-h][1-8])|-)\\s+.*");
   boost::smatch m;
   if (!boost::regex_match(fen, m, fen_regex))
     throw std::runtime_error(str(boost::format("can't parse FEN: %1%") % fen));
@@ -84,11 +84,11 @@ State::State(std::string fen)
 
   color_to_move = std::string(m[3].first, m[3].second) == "w" ? colors::white : colors::black;
 
-  can_castle_kingside  = {m[4].matched, m[6].matched};
-  can_castle_queenside = {m[5].matched, m[7].matched};
+  can_castle_kingside  = {m[5].matched, m[7].matched};
+  can_castle_queenside = {m[6].matched, m[8].matched};
 
-  if (m[9].matched)
-    en_passant_square = squares::partition[std::string(m[9].first, m[9].second)];
+  if (m[10].matched)
+    en_passant_square = squares::partition[std::string(m[10].first, m[10].second)];
 }
 
 State::State(State &that) :
