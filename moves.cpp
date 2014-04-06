@@ -72,16 +72,15 @@ bool Move::operator!=(const Move& that) const { return this->move != that.move; 
 bool Move::operator< (const Move& that) const { return this->move <  that.move; }
 
 // after https://chessprogramming.wikispaces.com/Hyperbola+Quintessence
-// FIXME: this is also used for rook attacks along files, for which it does not work
-Bitboard moves::slides(Bitboard occupancy, Bitboard piece, Bitboard mobilityMask) {
+Bitboard moves::slides(Bitboard occupancy, Bitboard piece, Bitboard mobility) {
   Bitboard forward, reverse;
-  mobilityMask &= ~piece;
-  forward = occupancy & mobilityMask;
+  mobility &= ~piece;
+  forward = occupancy & mobility;
   reverse  = __builtin_bswap64(forward);
   forward -= piece;
   reverse -= __builtin_bswap64(piece);
   forward ^= __builtin_bswap64(reverse);
-  forward &= mobilityMask;
+  forward &= mobility;
   return forward;
 }
 

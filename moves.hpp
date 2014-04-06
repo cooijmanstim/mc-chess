@@ -56,7 +56,7 @@ public:
 
 
 namespace moves {
-  Bitboard slides(Bitboard occupancy, Bitboard piece, Bitboard mobilityMask);
+  Bitboard slides(Bitboard occupancy, Bitboard piece, Bitboard mobility);
   Bitboard rank_onto_a1h8(Bitboard b, Rank rank);
   Bitboard a1h8_onto_rank(Bitboard b, Rank rank);
   Bitboard slides_rank(Bitboard occupancy, Bitboard piece, Rank rank);
