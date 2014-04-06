@@ -44,3 +44,9 @@ namespace antidiagonals {
   typedef BoardPartition::Index Index;
   extern const BoardPartition::Part a8a8, a7b8, a6c8, a5d8, a4e8, a3f8, a2g8, a1h8, b1h7, c1h6, d1h5, e1h4, f1h3, g1h2, h1h1;
 }
+
+typedef TrivialBoardPartition::Part Square;
+typedef BoardPartition::Part File;
+typedef BoardPartition::Part Rank;
+typedef BoardPartition::Part Diagonal;
+typedef BoardPartition::Part Antidiagonal;

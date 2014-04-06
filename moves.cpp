@@ -85,6 +85,35 @@ Bitboard moves::slides(Bitboard occupancy, Bitboard piece, Bitboard mobilityMask
   return forward;
 }
 
+Bitboard moves::rank_onto_a1h8(Bitboard b, Rank rank) {
+  // put the bits for the relevant rank into LSB
+  b = (b >> rank.index * directions::vertical) & 0xff;
+  // map LSB onto a1h8 diagonal
+  b = (b * 0x0101010101010101) & antidiagonals::a1h8;
+  return b;
+}
+
+Bitboard moves::a1h8_onto_rank(Bitboard b, Rank rank) {
+  assert((b & ~antidiagonals::a1h8) == 0);
+  // map diagonal onto MSB
+  b *= 0x0101010101010101;
+  // down to LSB, dropping everything except MSB
+  b /= 0x0100000000000000;
+  // shift up to the desired rank
+  b <<= rank.index * directions::vertical;
+  return b;
+}
+
+// like slides, but for attacks by a single rook along a rank.  slides() doesn't work for
+// that because the byteswap does not reverse the relevant bits; they are all in the same
+// byte.
+Bitboard moves::slides_rank(Bitboard occupancy, Bitboard piece, Rank rank) {
+  occupancy = rank_onto_a1h8(occupancy, rank);
+  piece     = rank_onto_a1h8(piece,     rank);
+  Bitboard attacks = slides(occupancy, piece, antidiagonals::a1h8);
+  return a1h8_onto_rank(attacks, rank);
+}
+
 using namespace directions;
 
 Bitboard moves::pawn_attacks_w(Bitboard pawn) { return ((pawn & ~files::a) << vertical >> horizontal); }
@@ -102,8 +131,8 @@ Bitboard moves::bishop_attacks(Bitboard occupancy, squares::Index source) {
 
 Bitboard moves::rook_attacks(Bitboard occupancy, squares::Index source) {
   return 
-    slides(occupancy, squares::partition[source].bitboard, ranks::partition.parts_by_square_index[source]) |
-    slides(occupancy, squares::partition[source].bitboard, files::partition.parts_by_square_index[source]);
+    slides     (occupancy, squares::partition[source].bitboard, files::partition.parts_by_square_index[source]) |
+    slides_rank(occupancy, squares::partition[source].bitboard, ranks::partition.parts_by_square_index[source]);
 }
 
 Bitboard moves::queen_attacks(Bitboard occupancy, squares::Index source) {

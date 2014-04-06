@@ -53,27 +53,26 @@ BOOST_AUTO_TEST_CASE(initial_moves) {
 }
 
 BOOST_AUTO_TEST_CASE(rays_every_which_way) {
-  TrivialBoardPartition::Part bishop_square = squares::f5,
-                              rook_square = squares::c3;
-  Bitboard diagonal = diagonals::partition.parts_by_square_index[bishop_square.index],
-           antidiagonal = antidiagonals::partition.parts_by_square_index[bishop_square.index],
-           rank = ranks::partition.parts_by_square_index[rook_square.index],
-           file = files::partition.parts_by_square_index[rook_square.index];
-  BOOST_CHECK_BITBOARDS_EQUAL(moves::slides(bishop_square.bitboard, bishop_square.bitboard, diagonal),
-                              0x0408100040800000);
-  BOOST_CHECK_BITBOARDS_EQUAL(moves::slides(bishop_square.bitboard, bishop_square.bitboard, antidiagonal),
-                              0x0080400010080402);
-  
-  BOOST_CHECK_BITBOARDS_EQUAL(moves::slides(rook_square.bitboard, rook_square.bitboard, rank),
-                              0x0000000000fc0000);
-  BOOST_CHECK_BITBOARDS_EQUAL(moves::slides(rook_square.bitboard, rook_square.bitboard, file),
-                              0x0404040404000404);
+  Square bishop_square = squares::f5, rook_square = squares::c3;
+  Diagonal diagonal = diagonals::partition.parts_by_square_index[bishop_square.index];
+  Antidiagonal antidiagonal = antidiagonals::partition.parts_by_square_index[bishop_square.index];
+  Rank rank = ranks::partition.parts_by_square_index[rook_square.index];
+  File file = files::partition.parts_by_square_index[rook_square.index];
+
+  Bitboard bda = moves::slides(bishop_square.bitboard, bishop_square.bitboard, diagonal);
+  Bitboard bga = moves::slides(bishop_square.bitboard, bishop_square.bitboard, antidiagonal);
+  Bitboard rra = moves::slides_rank(rook_square.bitboard, rook_square.bitboard, rank);
+  Bitboard rfa = moves::slides(rook_square.bitboard, rook_square.bitboard, file);
+  BOOST_CHECK_BITBOARDS_EQUAL(bda, 0x0408100040800000);
+  BOOST_CHECK_BITBOARDS_EQUAL(bga, 0x0080400010080402);
+  BOOST_CHECK_BITBOARDS_EQUAL(rra, 0x0000000000fb0000);
+  BOOST_CHECK_BITBOARDS_EQUAL(rfa, 0x0404040404000404);
 
   State state("8/8/8/5B2/8/2R5/8/8 w - - 0 1");
   BOOST_CHECK_BITBOARDS_EQUAL(moves::bishop_attacks(state.flat_occupancy(), squares::f5.index),
-                              0x0488592050880402);
+                              0x0488500050880402);
   BOOST_CHECK_BITBOARDS_EQUAL(moves::rook_attacks(state.flat_occupancy(), squares::c3.index),
-                              0x0404040404fc0404);
+                              0x0404040404fb0404);
 }
 
 BOOST_AUTO_TEST_CASE(various_moves) {
@@ -104,7 +103,7 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   std::cout << state << std::endl;
 
   BOOST_CHECK_BITBOARDS_EQUAL(moves::rook_attacks(state.flat_occupancy(), squares::c3.index),
-                              0x00000000041e0404);
+                              0x00000000041b0404);
 
   std::set<Move> expected_moves;
 
