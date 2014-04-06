@@ -36,7 +36,7 @@ public:
 
   static std::string typename_from_type(Type type);
 
-  Move(squares::Index from, squares::Index to, Type type);
+  Move(const squares::Index from, const squares::Index to, const Type type);
   Move(const Move& that);
 
   Move& operator=(const Move& that);
@@ -56,32 +56,30 @@ public:
 
 
 namespace moves {
-  Bitboard slides(Bitboard occupancy, Bitboard piece, Bitboard mobility);
-  Bitboard rank_onto_a1h8(Bitboard b, Rank rank);
-  Bitboard a1h8_onto_rank(Bitboard b, Rank rank);
-  Bitboard slides_rank(Bitboard occupancy, Bitboard piece, Rank rank);
+  Bitboard slides(const Bitboard occupancy, const Bitboard piece, const Bitboard mobility);
+  Bitboard slides_rank(const Bitboard occupancy, const Bitboard piece, const Rank rank);
 
-  Bitboard pawn_attacks_w(Bitboard pawn);
-  Bitboard pawn_attacks_e(Bitboard pawn);
-  Bitboard knight_attacks(Bitboard knight, short leftshift, short rightshift, Bitboard badtarget);
-  Bitboard bishop_attacks(Bitboard occupancy, squares::Index source);
-  Bitboard rook_attacks(Bitboard occupancy, squares::Index source);
-  Bitboard queen_attacks(Bitboard occupancy, squares::Index source);
-  Bitboard king_attacks(Bitboard king);
-  
-  Bitboard all_attacks(Bitboard occupancy, Board board);
-  Bitboard black_attacks(Bitboard occupancy, Board board);
-  
-  void pawn(std::vector<Move>& moves, Bitboard pawn, Bitboard us, Bitboard them, Bitboard en_passant_square);
-  void knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitboard them, Bitboard en_passant_square);
-  void bishop(std::vector<Move>& moves, Bitboard bishop, Bitboard us, Bitboard them, Bitboard en_passant_square);
-  void rook(std::vector<Move>& moves, Bitboard rook, Bitboard us, Bitboard them, Bitboard en_passant_square);
-  void queen(std::vector<Move>& moves, Bitboard queen, Bitboard us, Bitboard them, Bitboard en_passant_square);
-  void king(std::vector<Move>& moves, Bitboard king, Bitboard us, Bitboard them, Bitboard en_passant_square);
-  void castle(std::vector<Move>& moves, Bitboard occupancy, Board board,
-              bool can_castle_kingside, bool can_castle_queenside);
+  Bitboard pawn_attacks_w(const Bitboard pawn);
+  Bitboard pawn_attacks_e(const Bitboard pawn);
+  Bitboard knight_attacks(const Bitboard knight, const short leftshift, const short rightshift, const Bitboard badtarget);
+  Bitboard bishop_attacks(const Bitboard occupancy, const squares::Index source);
+  Bitboard rook_attacks(const Bitboard occupancy, const squares::Index source);
+  Bitboard queen_attacks(const Bitboard occupancy, const squares::Index source);
+  Bitboard king_attacks(const Bitboard king);
 
-  void piece_moves(std::vector<Move>& moves, Piece piece, Board board, Occupancy occupancy, Bitboard en_passant_square);
-  void all_moves(std::vector<Move>& moves, Board board, Occupancy occupancy, Bitboard en_passant_square,
-                 bool can_castle_kingside, bool can_castle_queenside);
+  Bitboard all_attacks(const Bitboard occupancy, const Board& board);
+  Bitboard black_attacks(const Bitboard occupancy, const Board& board);
+
+  void pawn  (std::vector<Move>& moves, const Bitboard pawn,   const Bitboard us, const Bitboard them, const Bitboard en_passant_square);
+  void knight(std::vector<Move>& moves, const Bitboard knight, const Bitboard us, const Bitboard them, const Bitboard en_passant_square);
+  void bishop(std::vector<Move>& moves, const Bitboard bishop, const Bitboard us, const Bitboard them, const Bitboard en_passant_square);
+  void rook  (std::vector<Move>& moves, const Bitboard rook,   const Bitboard us, const Bitboard them, const Bitboard en_passant_square);
+  void queen (std::vector<Move>& moves, const Bitboard queen,  const Bitboard us, const Bitboard them, const Bitboard en_passant_square);
+  void king  (std::vector<Move>& moves, const Bitboard king,   const Bitboard us, const Bitboard them, const Bitboard en_passant_square);
+  void castle(std::vector<Move>& moves, const Bitboard occupancy, const Board& board,
+              const bool can_castle_kingside, const bool can_castle_queenside);
+
+  void piece_moves(std::vector<Move>& moves, const Piece piece, const Board& board, const Occupancy& occupancy, const Bitboard en_passant_square);
+  void all_moves(std::vector<Move>& moves, const Board& board, const Occupancy& occupancy, const Bitboard en_passant_square,
+                 const bool can_castle_kingside, const bool can_castle_queenside);
 }

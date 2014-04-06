@@ -54,15 +54,17 @@ BOOST_AUTO_TEST_CASE(initial_moves) {
 
 BOOST_AUTO_TEST_CASE(rays_every_which_way) {
   Square bishop_square = squares::f5, rook_square = squares::c3;
+
   Diagonal diagonal = diagonals::partition.parts_by_square_index[bishop_square.index];
   Antidiagonal antidiagonal = antidiagonals::partition.parts_by_square_index[bishop_square.index];
   Rank rank = ranks::partition.parts_by_square_index[rook_square.index];
   File file = files::partition.parts_by_square_index[rook_square.index];
 
-  Bitboard bda = moves::slides(bishop_square.bitboard, bishop_square.bitboard, diagonal);
-  Bitboard bga = moves::slides(bishop_square.bitboard, bishop_square.bitboard, antidiagonal);
-  Bitboard rra = moves::slides_rank(rook_square.bitboard, rook_square.bitboard, rank);
-  Bitboard rfa = moves::slides(rook_square.bitboard, rook_square.bitboard, file);
+  Bitboard bda = moves::slides(bishop_square, bishop_square, diagonal & ~bishop_square);
+  Bitboard bga = moves::slides(bishop_square, bishop_square, antidiagonal & ~bishop_square);
+  Bitboard rra = moves::slides_rank(rook_square, rook_square, rank);
+  Bitboard rfa = moves::slides(rook_square, rook_square, file & ~rook_square);
+
   BOOST_CHECK_BITBOARDS_EQUAL(bda, 0x0408100040800000);
   BOOST_CHECK_BITBOARDS_EQUAL(bga, 0x0080400010080402);
   BOOST_CHECK_BITBOARDS_EQUAL(rra, 0x0000000000fb0000);
