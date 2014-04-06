@@ -110,11 +110,11 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   std::set<Move> expected_moves;
 
   // a1 rook
-  for (BoardPartition::Part target: {b1, c1, d1})
+  for (Square target: {b1, c1, d1})
     expected_moves.emplace(Move(a1.index, target.index, Move::Type::normal));
 
   // e1 king
-  for (BoardPartition::Part target: {d1, f1, d2, f2})
+  for (Square target: {d1, f1, d2, f2})
     expected_moves.emplace(Move(e1.index, target.index, Move::Type::normal));
   expected_moves.emplace(Move(e1.index, c1.index, Move::Type::castle_queenside));
 
@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   expected_moves.emplace(Move(b2.index, b3.index, Move::Type::normal));
 
   // e2 queen
-  for (BoardPartition::Part target: {f1, f2, g2, f3, d3, d2, c2, d1})
+  for (Square target: {f1, f2, g2, f3, d3, d2, c2, d1})
     expected_moves.emplace(Move(e2.index, target.index, Move::Type::normal));
 
   // h2 pawn
@@ -134,18 +134,18 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   expected_moves.emplace(Move(h2.index, h4.index, Move::Type::double_push));
 
   // c3 rook
-  for (BoardPartition::Part target: {c2, c1, d3, b3, a3})
+  for (Square target: {c2, c1, d3, b3, a3})
     expected_moves.emplace(Move(c3.index, target.index, Move::Type::normal));
   
   // e3 bishop
-  for (BoardPartition::Part target: {f2, g1, d4, d2, c1})
+  for (Square target: {f2, g1, d4, d2, c1})
     expected_moves.emplace(Move(e3.index, target.index, Move::Type::normal));
   expected_moves.emplace(Move(e3.index, f4.index, Move::Type::capture));
 
   // b4 knight
-  for (BoardPartition::Part target: {d5, d3, c2})
+  for (Square target: {d5, d3, c2})
     expected_moves.emplace(Move(b4.index, target.index, Move::Type::normal));
-  for (BoardPartition::Part target: {a6, c6})
+  for (Square target: {a6, c6})
     expected_moves.emplace(Move(b4.index, target.index, Move::Type::capture));
 
   // c4 pawn
@@ -153,9 +153,9 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   // g4 pawn
 
   // c5 knight
-  for (BoardPartition::Part target: {e6, e4, d3, b3, a4})
+  for (Square target: {e6, e4, d3, b3, a4})
     expected_moves.emplace(Move(c5.index, target.index, Move::Type::normal));
-  for (BoardPartition::Part target: {a6, b7})
+  for (Square target: {a6, b7})
     expected_moves.emplace(Move(c5.index, target.index, Move::Type::capture));
 
   // f5 pawn

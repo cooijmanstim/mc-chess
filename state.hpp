@@ -40,8 +40,8 @@ public:
 
   Move parse_algebraic(std::string algebraic) const;
   std::vector<Move> match_algebraic(Piece piece,
-                                    boost::optional<BoardPartition::Part> source_file,
-                                    boost::optional<BoardPartition::Part> source_rank,
+                                    boost::optional<File> source_file,
+                                    boost::optional<Rank> source_rank,
                                     bool is_capture,
                                     squares::Index target) const;
   void make_moves(std::string algebraic_variation);

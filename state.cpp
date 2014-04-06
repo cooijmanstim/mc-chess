@@ -56,7 +56,7 @@ State::State(std::string fen)
   using namespace pieces;
   empty_board();
   squares::Index square_index = 0;
-  for (BoardPartition::Part rank: ranks::partition) {
+  for (Rank rank: ranks::partition) {
     assert(square_index == rank.index * 8);
     for (char c: fen_ranks[rank.index]) {
       if (isdigit(c)) {
@@ -188,8 +188,8 @@ Move State::parse_algebraic(std::string algebraic) const {
 
   Piece piece = pieces::type_from_name(std::string(m[1].first, m[1].second));
 
-  boost::optional<BoardPartition::Part> source_file;
-  boost::optional<BoardPartition::Part> source_rank;
+  boost::optional<File> source_file;
+  boost::optional<Rank> source_rank;
   if (m[2].matched) source_file = files::partition[std::string(m[2].first, m[2].second)];
   if (m[3].matched) source_rank = ranks::partition[std::string(m[3].first, m[3].second)];
 
@@ -225,8 +225,8 @@ Bitboard State::flat_occupancy() const {
 }
 
 std::vector<Move> State::match_algebraic(Piece piece,
-                                         boost::optional<BoardPartition::Part> source_file,
-                                         boost::optional<BoardPartition::Part> source_rank,
+                                         boost::optional<File> source_file,
+                                         boost::optional<Rank> source_rank,
                                          bool is_capture,
                                          squares::Index target) const {
   std::vector<Move> candidates;
