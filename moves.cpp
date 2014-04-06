@@ -274,11 +274,6 @@ void moves::knight(std::vector<Move>& moves, Bitboard knight, Bitboard us, Bitbo
     // TODO: dry up
     bitboard::for_each_member(knight_attacks(knight, ka.leftshift, ka.rightshift, ka.badtargets | us) & ~them,
                               [&moves, &ka, knight, us](squares::Index target) {
-                                if (target == squares::a3.index && (target - ka.leftshift + ka.rightshift) == squares::g1.index) {
-                                  std::cerr << boost::format("g1->a3: source %|1$#x| left %2% right %3% badtargets %|4$#x| us %|5$#x|")
-                                                             % knight % ka.leftshift % ka.rightshift % ka.badtargets % us
-                                            << std::endl;
-                                }
                                 moves.push_back(Move(target - ka.leftshift + ka.rightshift,
                                                      target,
                                                      Move::Type::normal));
