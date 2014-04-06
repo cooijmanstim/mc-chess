@@ -88,12 +88,12 @@ Bitboard rank_onto_a1h8(Bitboard b, const Rank rank) {
   // put the bits for the relevant rank into LSB
   b = (b >> rank.index * directions::vertical) & 0xff;
   // map LSB onto a1h8 diagonal
-  b = (b * 0x0101010101010101) & antidiagonals::a1h8;
+  b = (b * 0x0101010101010101) & giadonals::a1h8;
   return b;
 }
 
 Bitboard a1h8_onto_rank(Bitboard b, const Rank rank) {
-  b &= antidiagonals::a1h8;
+  b &= giadonals::a1h8;
   // map diagonal onto MSB
   b *= 0x0101010101010101;
   // down to LSB, dropping everything except MSB
@@ -109,7 +109,7 @@ Bitboard a1h8_onto_rank(Bitboard b, const Rank rank) {
 Bitboard moves::slides_rank(Bitboard occupancy, Bitboard piece, const Rank rank) {
   occupancy = rank_onto_a1h8(occupancy, rank);
   piece     = rank_onto_a1h8(piece,     rank);
-  Bitboard attacks = slides(occupancy, piece, antidiagonals::a1h8 & ~piece);
+  Bitboard attacks = slides(occupancy, piece, giadonals::a1h8 & ~piece);
   return a1h8_onto_rank(attacks, rank);
 }
 
@@ -128,7 +128,7 @@ Bitboard moves::bishop_attacks(const Bitboard occupancy, const squares::Index so
   Bitboard piece = squares::partition[source].bitboard;
   return 
     slides(occupancy, piece, diagonals::partition.parts_by_square_index[source] & ~piece) |
-    slides(occupancy, piece, antidiagonals::partition.parts_by_square_index[source] & ~piece);
+    slides(occupancy, piece, giadonals::partition.parts_by_square_index[source] & ~piece);
 }
 
 Bitboard moves::rook_attacks(const Bitboard occupancy, const squares::Index source) {

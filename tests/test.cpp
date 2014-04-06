@@ -20,8 +20,8 @@ BOOST_AUTO_TEST_CASE(partitions) {
   using namespace squares;
   BOOST_CHECK_BITBOARDS_EQUAL(files::a,  a1 | a2 | a3 | a4 | a5 | a6 | a7 | a8);
   BOOST_CHECK_BITBOARDS_EQUAL(ranks::_8, a8 | b8 | c8 | d8 | e8 | f8 | g8 | h8);
-  BOOST_CHECK_BITBOARDS_EQUAL(antidiagonals::a1h8, a1 | b2 | c3 | d4 | e5 | f6 | g7 | h8);
-  BOOST_CHECK_BITBOARDS_EQUAL(    diagonals::a8h1, a8 | b7 | c6 | d5 | e4 | f3 | g2 | h1);
+  BOOST_CHECK_BITBOARDS_EQUAL(giadonals::a1h8, a1 | b2 | c3 | d4 | e5 | f6 | g7 | h8);
+  BOOST_CHECK_BITBOARDS_EQUAL(diagonals::a8h1, a8 | b7 | c6 | d5 | e4 | f3 | g2 | h1);
 }
 
 BOOST_AUTO_TEST_CASE(initial_moves) {
@@ -56,12 +56,12 @@ BOOST_AUTO_TEST_CASE(rays_every_which_way) {
   Square bishop_square = squares::f5, rook_square = squares::c3;
 
   Diagonal diagonal = diagonals::partition.parts_by_square_index[bishop_square.index];
-  Antidiagonal antidiagonal = antidiagonals::partition.parts_by_square_index[bishop_square.index];
+  Giadonal giadonal = giadonals::partition.parts_by_square_index[bishop_square.index];
   Rank rank = ranks::partition.parts_by_square_index[rook_square.index];
   File file = files::partition.parts_by_square_index[rook_square.index];
 
   Bitboard bda = moves::slides(bishop_square, bishop_square, diagonal & ~bishop_square);
-  Bitboard bga = moves::slides(bishop_square, bishop_square, antidiagonal & ~bishop_square);
+  Bitboard bga = moves::slides(bishop_square, bishop_square, giadonal & ~bishop_square);
   Bitboard rra = moves::slides_rank(rook_square, rook_square, rank);
   Bitboard rfa = moves::slides(rook_square, rook_square, file & ~rook_square);
 
