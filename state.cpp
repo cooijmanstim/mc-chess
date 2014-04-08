@@ -293,6 +293,10 @@ void State::make_move_on_occupancy(const Move& move,
   occupancy[us] |=  target;
 
   switch (move.type()) {
+  case Move::Type::capturing_promotion_knight:
+  case Move::Type::capturing_promotion_bishop:
+  case Move::Type::capturing_promotion_rook:
+  case Move::Type::capturing_promotion_queen:
   case Move::Type::capture:
     if (target == en_passant_square)
       occupancy[them] &= ~(target >> directions::vertical);
@@ -317,6 +321,10 @@ void State::make_move_on_their_halfboard(const Move& move, const Piece piece,
                                          const Square& source, const Square& target,
                                          Halfboard& their_halfboard) const {
   switch (move.type()) {
+  case Move::Type::capturing_promotion_knight:
+  case Move::Type::capturing_promotion_bishop:
+  case Move::Type::capturing_promotion_rook:
+  case Move::Type::capturing_promotion_queen:
   case Move::Type::capture:
     if (target == en_passant_square) {
       assert(piece == pieces::pawn);
@@ -358,21 +366,25 @@ void State::make_move_on_our_halfboard(const Move& move, const Piece piece,
     our_halfboard[rook] &= ~squares::a1;
     our_halfboard[rook] |=  squares::d1;
     break;
+  case Move::Type::capturing_promotion_knight:
   case Move::Type::promotion_knight:
     assert(piece == pawn);
     our_halfboard[piece] &= ~target;
     our_halfboard[knight] |= target;
     break;
+  case Move::Type::capturing_promotion_bishop:
   case Move::Type::promotion_bishop:
     assert(piece == pawn);
     our_halfboard[piece] &= ~target;
     our_halfboard[bishop] |= target;
     break;
+  case Move::Type::capturing_promotion_rook:
   case Move::Type::promotion_rook:
     assert(piece == pawn);
     our_halfboard[piece] &= ~target;
     our_halfboard[rook] |= target;
     break;
+  case Move::Type::capturing_promotion_queen:
   case Move::Type::promotion_queen:
     assert(piece == pawn);
     our_halfboard[piece] &= ~target;
