@@ -12,7 +12,8 @@
 State::State() :
   us(colors::white), them(colors::black),
   en_passant_square(0),
-  occupancy({0x000000000000ffff, 0xffff000000000000})
+  occupancy({0x000000000000ffff, 0xffff000000000000}),
+  their_attacks(0xe7ffff0000000000)
 {
   using namespace colors;
   using namespace pieces;
@@ -34,12 +35,6 @@ State::State() :
 
   can_castle_kingside.fill(true);
   can_castle_queenside.fill(true);
-
-  // TODO: assign constant literal to their_attacks
-  flip_perspective();
-  compute_attacks();
-  flip_perspective();
-  std::cerr << boost::format("initial their attacks: %|1$#x|") % their_attacks << std::endl;
 }
 
 State::State(std::string fen)
