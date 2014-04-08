@@ -71,9 +71,11 @@ BOOST_AUTO_TEST_CASE(rays_every_which_way) {
   BOOST_CHECK_BITBOARDS_EQUAL(rfa, 0x0404040404000404);
 
   State state("8/8/8/5B2/8/2R5/8/8 w - - 0 1");
-  BOOST_CHECK_BITBOARDS_EQUAL(moves::bishop_attacks(state.flat_occupancy(), squares::f5.index),
+  Bitboard flat_occupancy;
+  board::flatten(state.occupancy, flat_occupancy);
+  BOOST_CHECK_BITBOARDS_EQUAL(moves::bishop_attacks(flat_occupancy, squares::f5.index),
                               0x0488500050880402);
-  BOOST_CHECK_BITBOARDS_EQUAL(moves::rook_attacks(state.flat_occupancy(), squares::c3.index),
+  BOOST_CHECK_BITBOARDS_EQUAL(moves::rook_attacks(flat_occupancy, squares::c3.index),
                               0x0404040404fb0404);
 }
 
@@ -100,11 +102,13 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   BOOST_CHECK(!state.can_castle_kingside[black]);
   BOOST_CHECK( state.can_castle_queenside[white]);
   BOOST_CHECK(!state.can_castle_queenside[black]);
-  BOOST_CHECK_EQUAL(state.color_to_move, white);
+  BOOST_CHECK_EQUAL(state.us, white);
 
   std::cout << state << std::endl;
 
-  BOOST_CHECK_BITBOARDS_EQUAL(moves::rook_attacks(state.flat_occupancy(), squares::c3.index),
+  Bitboard flat_occupancy;
+  board::flatten(state.occupancy, flat_occupancy);
+  BOOST_CHECK_BITBOARDS_EQUAL(moves::rook_attacks(flat_occupancy, squares::c3.index),
                               0x00000000041b0404);
 
   std::set<Move> expected_moves;

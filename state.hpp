@@ -12,6 +12,8 @@
 
 class State {
 public:
+  Color us, them;
+
   Board board;
 
   // false iff the relevant rook or king has moved.
@@ -21,7 +23,9 @@ public:
   // pawn will end up.
   Bitboard en_passant_square;
 
-  Color color_to_move;
+  // redundant
+  Occupancy occupancy;
+  Bitboard their_attacks;
 
   State();
   State(std::string fen);
@@ -33,18 +37,38 @@ public:
 
   friend std::ostream& operator<<(std::ostream& o, const State& s);
 
-  Occupancy occupancy() const;
-  Bitboard flat_occupancy() const;
-
   std::vector<Move> moves() const;
 
   Move parse_algebraic(std::string algebraic) const;
-  std::vector<Move> match_algebraic(Piece piece,
+  std::vector<Move> match_algebraic(const Piece piece,
                                     boost::optional<File> source_file,
                                     boost::optional<Rank> source_rank,
-                                    bool is_capture,
-                                    squares::Index target) const;
+                                    const bool is_capture,
+                                    const squares::Index target) const;
   void make_moves(std::string algebraic_variation);
   void make_moves(std::vector<std::string> algebraic_moves);
-  void make_move(Move m);
+  void make_move(const Move& m);
+
+  void compute_occupancy();
+  void compute_attacks();
+  void flip_perspective();
+
+  Piece moving_piece(const Move& move, const Halfboard& us) const;
+  bool leaves_king_in_check(const Move& m) const;
+  void make_move_on_occupancy(const Move& move,
+                              const Square& source, const Square& target,
+                              Occupancy& occupancy) const;
+  void make_move_on_their_halfboard(const Move& move, const Piece piece,
+                                    const Square& source, const Square& target,
+                                    Halfboard& their_halfboard) const;
+  void make_move_on_our_halfboard(const Move& move, const Piece piece,
+                                  const Square& source, const Square& target,
+                                  Halfboard& our_halfboard) const;
+  void update_castling_rights(const Move& move, const Piece piece,
+                              const Square& source, const Square& target,
+                              bool& can_castle_kingside,
+                              bool& can_castle_queenside) const;
+  void update_en_passant_square(const Move& move, const Piece piece,
+                                const Square& source, const Square& target,
+                                Bitboard& en_passant_square) const;
 };

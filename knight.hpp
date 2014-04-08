@@ -6,7 +6,7 @@
 struct KnightAttackType {
   unsigned short leftshift;
   unsigned short rightshift;
-  Bitboard badtargets;
+  Bitboard badtarget;
 };
 
 std::vector<KnightAttackType> get_knight_attack_types();

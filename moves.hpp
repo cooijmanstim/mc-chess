@@ -8,6 +8,7 @@
 #include "partitions.hpp"
 #include "board.hpp"
 #include "pieces.hpp"
+#include "knight.hpp"
 
 class Move {
   typedef uint16_t Word;
@@ -51,6 +52,8 @@ public:
   bool operator!=(const Move& that) const;
   bool operator< (const Move& that) const; // used for std::set in tests
 
+  bool matches_algebraic(boost::optional<File> source_file, boost::optional<Rank> source_rank, bool is_capture, squares::Index target) const;
+
   friend std::ostream& operator<<(std::ostream& o, const Move& m);
 };
 
@@ -61,14 +64,14 @@ namespace moves {
 
   Bitboard pawn_attacks_w(const Bitboard pawn);
   Bitboard pawn_attacks_e(const Bitboard pawn);
-  Bitboard knight_attacks(const Bitboard knight, const short leftshift, const short rightshift, const Bitboard badtarget);
+  Bitboard knight_attacks(const Bitboard knight, const KnightAttackType& ka);
   Bitboard bishop_attacks(const Bitboard occupancy, const squares::Index source);
   Bitboard rook_attacks(const Bitboard occupancy, const squares::Index source);
   Bitboard queen_attacks(const Bitboard occupancy, const squares::Index source);
   Bitboard king_attacks(const Bitboard king);
 
-  Bitboard all_attacks(const Bitboard occupancy, const Board& board);
-  Bitboard black_attacks(const Bitboard occupancy, const Board& board);
+  Bitboard all_attacks(const Bitboard occupancy, const Halfboard& attackers);
+  Bitboard black_attacks(const Bitboard occupancy, const Halfboard& attackers);
 
   void pawn  (std::vector<Move>& moves, const Bitboard pawn,   const Bitboard us, const Bitboard them, const Bitboard en_passant_square);
   void knight(std::vector<Move>& moves, const Bitboard knight, const Bitboard us, const Bitboard them, const Bitboard en_passant_square);

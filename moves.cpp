@@ -71,6 +71,21 @@ bool Move::operator==(const Move& that) const { return this->move == that.move; 
 bool Move::operator!=(const Move& that) const { return this->move != that.move; }
 bool Move::operator< (const Move& that) const { return this->move <  that.move; }
 
+bool Move::matches_algebraic(boost::optional<File> source_file,
+                             boost::optional<Rank> source_rank,
+                             bool is_capture,
+                             squares::Index target) const {
+  if (source_file && *source_file != files::partition.parts_by_square_index[from()])
+    return false;
+  if (source_rank && *source_rank != ranks::partition.parts_by_square_index[from()])
+    return false;
+  if (is_capture && !this->is_capture())
+    return false;
+  if (to() != target)
+    return false;
+  return true;
+}
+
 // after https://chessprogramming.wikispaces.com/Hyperbola+Quintessence
 Bitboard moves::slides(const Bitboard occupancy, const Bitboard piece, const Bitboard mobility) {
   Bitboard forward, reverse;
@@ -118,10 +133,8 @@ using namespace directions;
 Bitboard moves::pawn_attacks_w(const Bitboard pawn) { return ((pawn & ~files::a) << vertical >> horizontal); }
 Bitboard moves::pawn_attacks_e(const Bitboard pawn) { return ((pawn & ~files::h) << vertical << horizontal); }
 
-Bitboard moves::knight_attacks(const Bitboard knight, const short leftshift, const short rightshift, const Bitboard badtarget) {
-  assert(leftshift >= 0);
-  assert(rightshift >= 0);
-  return (knight << leftshift >> rightshift) & ~badtarget;
+Bitboard moves::knight_attacks(const Bitboard knight, const KnightAttackType& ka) {
+  return (knight << ka.leftshift >> ka.rightshift) & ~ka.badtarget;
 }
 
 Bitboard moves::bishop_attacks(const Bitboard occupancy, const squares::Index source) {
@@ -149,13 +162,11 @@ Bitboard moves::king_attacks(const Bitboard king) {
 }
 
 // NOTE: includes attacks on own pieces
-Bitboard moves::all_attacks(const Bitboard occupancy, const Board& board) {
-  std::array<Bitboard, pieces::cardinality> attackers = board[colors::white];
-
+Bitboard moves::all_attacks(const Bitboard occupancy, const Halfboard& attackers) {
   Bitboard knight_attacks = 0;
   for (KnightAttackType ka: get_knight_attack_types())
     // TODO: dry up
-    knight_attacks |= moves::knight_attacks(attackers[pieces::knight], ka.leftshift, ka.rightshift, ka.badtargets);
+    knight_attacks |= moves::knight_attacks(attackers[pieces::knight], ka);
 
   // TODO: dry up
   Bitboard bishop_attacks = 0;
@@ -180,16 +191,14 @@ Bitboard moves::all_attacks(const Bitboard occupancy, const Board& board) {
     knight_attacks | bishop_attacks | rook_attacks | queen_attacks;
 }
 
-Bitboard moves::black_attacks(const Bitboard occupancy, const Board& board) {
+// FIXME: use state.their_attacks
+Bitboard moves::black_attacks(const Bitboard occupancy, const Halfboard& attackers) {
   // view the board from the perspective of black to generate black's attacks
   using namespace colors;
   Bitboard b_occupancy = bitboard::flip_vertically(occupancy);
-  Board b_board;
-  for (Piece piece: pieces::values) {
-    b_board[white][piece] = bitboard::flip_vertically(board[black][piece]);
-    b_board[black][piece] = bitboard::flip_vertically(board[white][piece]);
-  }
-  Bitboard b_attacks = all_attacks(b_occupancy, b_board);
+  Halfboard b_attackers(attackers);
+  board::flip_vertically(b_attackers);
+  Bitboard b_attacks = all_attacks(b_occupancy, b_attackers);
   return bitboard::flip_vertically(b_attacks);
 }
 
@@ -258,7 +267,7 @@ void moves::pawn(std::vector<Move>& moves, const Bitboard pawn, const Bitboard u
 
 void moves::knight(std::vector<Move>& moves, const Bitboard knight, const Bitboard us, const Bitboard them, const Bitboard en_passant_square) {
   for (KnightAttackType ka: get_knight_attack_types()) {
-    moves_from_attacks(moves, knight_attacks(knight, ka.leftshift, ka.rightshift, ka.badtargets),
+    moves_from_attacks(moves, knight_attacks(knight, ka),
                        us, them, -ka.leftshift + ka.rightshift, relative);
   }
 }
@@ -293,7 +302,7 @@ void moves::king(std::vector<Move>& moves, const Bitboard king, const Bitboard u
 void moves::castle(std::vector<Move>& moves, const Bitboard occupancy, const Board& board,
                    const bool can_castle_kingside, const bool can_castle_queenside) {
   using namespace squares;
-  Bitboard attacks = black_attacks(occupancy, board);
+  Bitboard attacks = black_attacks(occupancy, board[colors::white]);
   if (can_castle_kingside &&
       !(attacks & (e1 | f1 | g1)) &&
       !(occupancy & (f1 | g1)))
