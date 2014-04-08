@@ -187,7 +187,7 @@ bool State::leaves_king_in_check(const Move& m) const {
 
   // king move?
   if (source & board[us][pieces::king])
-    return !(their_attacks & target);
+    return their_attacks & target;
 
   // only occupancy and their halfboard make a difference
   Occupancy occupancy(this->occupancy);
