@@ -43,8 +43,8 @@ public:
   std::vector<Move> match_algebraic(const Piece piece,
                                     boost::optional<File> source_file,
                                     boost::optional<Rank> source_rank,
-                                    const bool is_capture,
-                                    const squares::Index target) const;
+                                    const Square& target,
+                                    const bool is_capture) const;
   void make_moves(std::string algebraic_variation);
   void make_moves(std::vector<std::string> algebraic_moves);
   void make_move(const Move& m);

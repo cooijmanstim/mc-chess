@@ -52,7 +52,7 @@ public:
   bool operator!=(const Move& that) const;
   bool operator< (const Move& that) const; // used for std::set in tests
 
-  bool matches_algebraic(boost::optional<File> source_file, boost::optional<Rank> source_rank, bool is_capture, squares::Index target) const;
+  bool matches_algebraic(boost::optional<File> source_file, boost::optional<Rank> source_rank, const Square& target, const bool is_capture) const;
 
   friend std::ostream& operator<<(std::ostream& o, const Move& m);
 };

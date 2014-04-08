@@ -27,6 +27,8 @@ BOOST_AUTO_TEST_CASE(partitions) {
 BOOST_AUTO_TEST_CASE(initial_moves) {
   State state;
 
+  std::cout << state << std::endl;
+
   std::set<Move> expected_moves;
   using namespace directions;
   bitboard::for_each_member(ranks::_2, [&expected_moves](squares::Index from) {
@@ -98,6 +100,7 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   BOOST_CHECK_BITBOARDS_EQUAL(state.board[black][queen],  a6.bitboard);
   BOOST_CHECK_BITBOARDS_EQUAL(state.board[black][king],   g8.bitboard);
   BOOST_CHECK_BITBOARDS_EQUAL(state.en_passant_square,    g6.bitboard);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.their_attacks, 0xfeef5fdbf5518100);
   BOOST_CHECK(!state.can_castle_kingside[white]);
   BOOST_CHECK(!state.can_castle_kingside[black]);
   BOOST_CHECK( state.can_castle_queenside[white]);

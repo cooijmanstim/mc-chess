@@ -131,25 +131,25 @@ bool State::operator==(const State &that) const {
 }
 
 std::ostream& operator<<(std::ostream& o, const State& s) {
-  // FIXME: deal with monochromicity
   array2d<char, colors::cardinality, pieces::cardinality> symbols = {
     'P', 'N', 'B', 'R', 'Q', 'K',
     'p', 'n', 'b', 'r', 'q', 'k',
   };
 
+  Board board(s.board);
+  if (s.us == colors::white) {
+    // squares run from white to black, output runs from top to bottom.  flip
+    // the board to get white on the bottom.
+    board::flip_vertically(board);
+  }
+
   for (Square square: squares::partition) {
     o << ' ';
 
-    squares::Index i = square.index;
-    // bit index with rank flipped
-    // TODO: this can be done more easily, and take us/them into account
-    size_t j = ((7 - (i >> 3)) << 3) + (i & 7);
-
-    Bitboard bitboard = Bitboard(1)<<j;
     bool piece_found = false;
     for (Color c: colors::values) {
       for (Piece p: pieces::values) {
-        if (s.board[c][p] & bitboard) {
+        if (board[c][p] & square.bitboard) {
           o << symbols[c][p];
 
           // take this opportunity to ensure no two pieces are on the same square
@@ -162,17 +162,17 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
     if (!piece_found)
       o << '.';
 
-    if ((i + 1) % 8 == 0)
+    if ((square.index + 1) % 8 == 0)
       o << std::endl;
   }
 
-  o << "from " << colors::name(s.us) << "'s perspective. ";
+  o << colors::name(s.us) << " to move.";
 
   o << " castling rights: ";
-  if (s.can_castle_kingside [colors::white]) o << "k";
-  if (s.can_castle_queenside[colors::white]) o << "q";
-  if (s.can_castle_kingside [colors::black]) o << "K";
-  if (s.can_castle_queenside[colors::black]) o << "Q";
+  for (Color c: colors::values) {
+    if (s.can_castle_kingside [c]) o << symbols[c][pieces::king];
+    if (s.can_castle_queenside[c]) o << symbols[c][pieces::queen];
+  }
 
   if (s.en_passant_square != 0)
     o << " en-passant square: " << squares::from_bitboard(s.en_passant_square).name;
@@ -221,7 +221,6 @@ std::vector<Move> State::moves() const {
 }
 
 Move State::parse_algebraic(std::string algebraic) const {
-  // FIXME: deal with monochromicity; flip ranks based on color_to_move
   boost::regex algebraic_move_regex("([NBRQK]?)([a-h])?([1-8])?(x)?([a-h][1-8])+?");
   boost::smatch m;
   if (!boost::regex_match(algebraic, m, algebraic_move_regex))
@@ -235,9 +234,16 @@ Move State::parse_algebraic(std::string algebraic) const {
   if (m[3].matched) source_rank = ranks::partition[std::string(m[3].first, m[3].second)];
 
   bool is_capture = m[4].matched;
-  squares::Index target = squares::partition[std::string(m[5].first, m[5].second)].index;
+  Square target = squares::partition[std::string(m[5].first, m[5].second)];
 
-  std::vector<Move> candidates = match_algebraic(piece, source_file, source_rank, is_capture, target);
+  // deal with monochromicity
+  if (us == colors::black) {
+    target = squares::from_bitboard(bitboard::flip_vertically(target.bitboard));
+    if (source_rank)
+      source_rank = ranks::partition[ranks::partition.cardinality - source_rank->index - 1];
+  }
+
+  std::vector<Move> candidates = match_algebraic(piece, source_file, source_rank, target, is_capture);
   if (candidates.empty())
     throw std::runtime_error(str(boost::format("no match for algebraic move: %1%") % algebraic));
   if (candidates.size() > 1)
@@ -248,12 +254,12 @@ Move State::parse_algebraic(std::string algebraic) const {
 std::vector<Move> State::match_algebraic(const Piece piece,
                                          boost::optional<File> source_file,
                                          boost::optional<Rank> source_rank,
-                                         const bool is_capture,
-                                         const squares::Index target) const {
+                                         const Square& target,
+                                         const bool is_capture) const {
   std::vector<Move> candidates;
   moves::piece_moves(candidates, piece, board, occupancy, en_passant_square);
   for (auto it = candidates.begin(); it != candidates.end(); ) {
-    if (!it->matches_algebraic(source_file, source_rank, is_capture, target)) {
+    if (!it->matches_algebraic(source_file, source_rank, target, is_capture)) {
       it = candidates.erase(it);
     } else {
       it++;

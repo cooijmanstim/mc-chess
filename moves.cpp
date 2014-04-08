@@ -73,15 +73,15 @@ bool Move::operator< (const Move& that) const { return this->move <  that.move; 
 
 bool Move::matches_algebraic(boost::optional<File> source_file,
                              boost::optional<Rank> source_rank,
-                             bool is_capture,
-                             squares::Index target) const {
+                             const Square& target,
+                             const bool is_capture) const {
   if (source_file && *source_file != files::partition.parts_by_square_index[from()])
     return false;
   if (source_rank && *source_rank != ranks::partition.parts_by_square_index[from()])
     return false;
   if (is_capture && !this->is_capture())
     return false;
-  if (to() != target)
+  if (to() != target.index)
     return false;
   return true;
 }
