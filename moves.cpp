@@ -302,7 +302,7 @@ void moves::king(std::vector<Move>& moves, const Bitboard king, const Bitboard u
 void moves::castle(std::vector<Move>& moves, const Bitboard occupancy, const Board& board,
                    const bool can_castle_kingside, const bool can_castle_queenside) {
   using namespace squares;
-  Bitboard attacks = black_attacks(occupancy, board[colors::white]);
+  Bitboard attacks = black_attacks(occupancy, board[colors::black]);
   if (can_castle_kingside &&
       !(attacks & (e1 | f1 | g1)) &&
       !(occupancy & (f1 | g1)))
