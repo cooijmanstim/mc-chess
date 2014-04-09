@@ -426,7 +426,7 @@ void State::update_en_passant_square(const Move& move, const Piece piece,
   switch (move.type()) {
   case Move::Type::double_push:
     assert(piece == pieces::pawn);
-    en_passant_square = target;
+    en_passant_square = target >> directions::vertical;
     break;
   case Move::Type::capture:
   case Move::Type::castle_kingside:
