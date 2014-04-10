@@ -191,17 +191,6 @@ Bitboard moves::all_attacks(const Bitboard occupancy, const Halfboard& attackers
     knight_attacks | bishop_attacks | rook_attacks | queen_attacks;
 }
 
-// FIXME: use state.their_attacks
-Bitboard moves::black_attacks(const Bitboard occupancy, const Halfboard& attackers) {
-  // view the board from the perspective of black to generate black's attacks
-  using namespace colors;
-  Bitboard b_occupancy = bitboard::flip_vertically(occupancy);
-  Halfboard b_attackers(attackers);
-  board::flip_vertically(b_attackers);
-  Bitboard b_attacks = all_attacks(b_occupancy, b_attackers);
-  return bitboard::flip_vertically(b_attacks);
-}
-
 enum Relativity {
   absolute=0, relative = 1
 };
@@ -300,15 +289,15 @@ void moves::king(std::vector<Move>& moves, const Bitboard king, const Bitboard u
 // NOTE: can_castle_{king,queen}side convey that castling rights have not been lost,
 // i.e., the king and the relevant rook have not moved
 void moves::castle(std::vector<Move>& moves, const Bitboard occupancy, const Board& board,
+                   const Bitboard their_attacks,
                    const bool can_castle_kingside, const bool can_castle_queenside) {
   using namespace squares;
-  Bitboard attacks = black_attacks(occupancy, board[colors::black]);
   if (can_castle_kingside &&
-      !(attacks & (e1 | f1 | g1)) &&
+      !(their_attacks & (e1 | f1 | g1)) &&
       !(occupancy & (f1 | g1)))
     moves.push_back(Move(e1.index, g1.index, Move::Type::castle_kingside));
   if (can_castle_queenside &&
-      !(attacks & (e1 | d1 | c1 | b1)) &&
+      !(their_attacks & (e1 | d1 | c1 | b1)) &&
       !(occupancy & (d1 | c1 | b1)))
     moves.push_back(Move(e1.index, c1.index, Move::Type::castle_queenside));
 }
@@ -327,17 +316,22 @@ const auto move_generators_by_piece = []() {
   return move_generators;
 }();
 
-void moves::piece_moves(std::vector<Move>& moves, const Piece piece, const Board& board, const Occupancy& occupancy, const Bitboard en_passant_square) {
-  Color us = colors::white, them = colors::black;
+void moves::piece_moves(std::vector<Move>& moves, const Piece piece,
+                        const Color us, const Color them,
+                        const Board& board, const Occupancy& occupancy,
+                        const Bitboard en_passant_square) {
   move_generators_by_piece[piece](moves, board[us][piece], occupancy[us], occupancy[them], en_passant_square);
 }
 
-void moves::all_moves(std::vector<Move>& moves, const Board& board, const Occupancy& occupancy, const Bitboard en_passant_square,
+void moves::all_moves(std::vector<Move>& moves,
+                      const Color us, const Color them,
+                      const Board& board, const Occupancy& occupancy,
+                      const Bitboard their_attacks,
+                      const Bitboard en_passant_square,
                       const bool can_castle_kingside, const bool can_castle_queenside) {
-  Color us = colors::white, them = colors::black;
   for (Piece piece: pieces::values)
     move_generators_by_piece[piece](moves, board[us][piece], occupancy[us], occupancy[them], en_passant_square);
-  castle(moves, occupancy[us] | occupancy[them], board, can_castle_kingside, can_castle_queenside);
+  castle(moves, occupancy[us] | occupancy[them], board, their_attacks, can_castle_kingside, can_castle_queenside);
 }
 
 std::ostream& operator<<(std::ostream& o, const Move& m) {

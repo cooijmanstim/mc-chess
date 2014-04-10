@@ -200,13 +200,42 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   BOOST_CHECK_MESSAGE(falsepositives.empty(), "illegal moves generated: " << falsepositives);
 }
 
-BOOST_AUTO_TEST_CASE(_moves) {
+BOOST_AUTO_TEST_CASE(monochromicity_algebraic) {
   State state;
 
-  state.make_moves("e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3 Ba5 d4 exd4 0-0 d3 Qb3 Qf6"
-                   "e5 Qg6 Re1 Nge7 Ba3 b5 Qxb5 Rb8 Qa4 Bb6 Nbd2 Bb7 Ne4 Qf5"
-                   "Bxd3 Qh5 Nf6+ gxf6 18.exf6 Rg8 19.Rad1 Qxf3 20.Rxe7+ Nxe7"
-                   "21.Qxd7+ Kxd7 22.Bf5+ Ke8 23.Bd7+ Kf8");
+  // after white's first move, black should have the exact same set of moves available
+  std::vector<Move> expected_moves = state.moves();
+
+  state.make_moves("e4");
+  BOOST_CHECK_BITBOARDS_EQUAL(state.board[state.us][pieces::pawn], ranks::_2);
+  BOOST_CHECK_BITBOARDS_EQUAL(state.en_passant_square, squares::e6.bitboard);
+
+  std::cout << state << std::endl;
+
+  std::vector<Move> actual_moves = state.moves();
+
+  std::set<Move> falsenegatives, falsepositives;
+  std::set_difference(expected_moves.begin(), expected_moves.end(),
+                      actual_moves.begin(), actual_moves.end(),
+                      std::inserter(falsenegatives, falsenegatives.begin()));
+  std::set_difference(actual_moves.begin(), actual_moves.end(),
+                      expected_moves.begin(), expected_moves.end(),
+                      std::inserter(falsepositives, falsepositives.begin()));
+  BOOST_CHECK_MESSAGE(falsenegatives.empty(), "legal moves not generated: " << falsenegatives);
+  BOOST_CHECK_MESSAGE(falsepositives.empty(), "illegal moves generated: " << falsepositives);
+}
+
+BOOST_AUTO_TEST_CASE(algebraic_moves) {
+  State state;
+
+  state.make_moves("e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3 Ba5 d4 exd4 0-0 d3 Qb3 Qf6");
+
+  // get a checkpoint to distinguish the two e5s
+  BOOST_CHECK(true);
+
+  state.make_moves("e5 Qg6 Re1 Nge7 Ba3 b5 Qxb5 Rb8 Qa4 Bb6 Nbd2 Bb7 Ne4 Qf5 "
+                   "Bxd3 Qh5 Nf6+ gxf6 exf6 Rg8 Rad1 Qxf3 Rxe7+ Nxe7 Qxd7+ "
+                   "Kxd7 Bf5+ Ke8 Bd7+ Kf8");
 
   BOOST_CHECK(true);
 }

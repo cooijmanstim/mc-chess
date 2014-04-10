@@ -71,7 +71,6 @@ namespace moves {
   Bitboard king_attacks(const Bitboard king);
 
   Bitboard all_attacks(const Bitboard occupancy, const Halfboard& attackers);
-  Bitboard black_attacks(const Bitboard occupancy, const Halfboard& attackers);
 
   void pawn  (std::vector<Move>& moves, const Bitboard pawn,   const Bitboard us, const Bitboard them, const Bitboard en_passant_square);
   void knight(std::vector<Move>& moves, const Bitboard knight, const Bitboard us, const Bitboard them, const Bitboard en_passant_square);
@@ -80,9 +79,16 @@ namespace moves {
   void queen (std::vector<Move>& moves, const Bitboard queen,  const Bitboard us, const Bitboard them, const Bitboard en_passant_square);
   void king  (std::vector<Move>& moves, const Bitboard king,   const Bitboard us, const Bitboard them, const Bitboard en_passant_square);
   void castle(std::vector<Move>& moves, const Bitboard occupancy, const Board& board,
+              const Bitboard their_attacks,
               const bool can_castle_kingside, const bool can_castle_queenside);
 
-  void piece_moves(std::vector<Move>& moves, const Piece piece, const Board& board, const Occupancy& occupancy, const Bitboard en_passant_square);
-  void all_moves(std::vector<Move>& moves, const Board& board, const Occupancy& occupancy, const Bitboard en_passant_square,
+  void piece_moves(std::vector<Move>& moves, const Piece piece,
+                   const Color us, const Color them,
+                   const Board& board, const Occupancy& occupancy,
+                   const Bitboard en_passant_square);
+  void all_moves(std::vector<Move>& moves, const Color us, const Color them,
+                 const Board& board, const Occupancy& occupancy,
+                 const Bitboard their_attacks,
+                 const Bitboard en_passant_square,
                  const bool can_castle_kingside, const bool can_castle_queenside);
 }

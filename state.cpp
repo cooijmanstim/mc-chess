@@ -181,9 +181,9 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
   return o;
 }
 
-bool State::leaves_king_in_check(const Move& m) const {
-  const Square source = squares::partition[m.from()],
-               target = squares::partition[m.to()];
+bool State::leaves_king_in_check(const Move& move) const {
+  const Square source = squares::partition[move.from()],
+               target = squares::partition[move.to()];
 
   // king move?
   if (source & board[us][pieces::king])
@@ -191,12 +191,12 @@ bool State::leaves_king_in_check(const Move& m) const {
 
   // only occupancy and their halfboard make a difference
   Occupancy occupancy(this->occupancy);
-  make_move_on_occupancy(m, source, target, occupancy);
+  make_move_on_occupancy(move, source, target, occupancy);
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
 
   Halfboard their_halfboard(board[them]);
-  make_move_on_their_halfboard(m, moving_piece(m, board[us]), source, target, their_halfboard);
+  make_move_on_their_halfboard(move, moving_piece(move, board[us]), source, target, their_halfboard);
 
   return moves::all_attacks(flat_occupancy, their_halfboard) & board[us][pieces::king];
 }
@@ -204,9 +204,10 @@ bool State::leaves_king_in_check(const Move& m) const {
 std::vector<Move> State::moves() const {
   // TODO: maybe reserve()
   std::vector<Move> moves;
-  moves::all_moves(moves, board, occupancy, en_passant_square,
-                   can_castle_kingside [us],
-                   can_castle_queenside[us]);
+  moves::all_moves(moves, us, them,
+                   board, occupancy,
+                   their_attacks, en_passant_square,
+                   can_castle_kingside[us], can_castle_queenside[us]);
 
   // filter out moves that would leave the king in check
   for (auto it = moves.begin(); it != moves.end(); ) {
@@ -257,7 +258,8 @@ std::vector<Move> State::match_algebraic(const Piece piece,
                                          const Square& target,
                                          const bool is_capture) const {
   std::vector<Move> candidates;
-  moves::piece_moves(candidates, piece, board, occupancy, en_passant_square);
+  moves::piece_moves(candidates, piece, us, them, board, occupancy, en_passant_square);
+
   for (auto it = candidates.begin(); it != candidates.end(); ) {
     if (!it->matches_algebraic(source_file, source_rank, target, is_capture)) {
       it = candidates.erase(it);
