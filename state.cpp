@@ -222,7 +222,14 @@ std::vector<Move> State::moves() const {
 }
 
 Move State::parse_algebraic(std::string algebraic) const {
-  boost::regex algebraic_move_regex("([NBRQK]?)([a-h])?([1-8])?(x)?([a-h][1-8])+?");
+  // TODO: maybe check legality?
+  // TODO: this castling knowledge is repeated all over the place... dry up
+  if (algebraic == "O-O" || algebraic == "0-0")
+    return Move(squares::e1.index, squares::g1.index, Move::Type::castle_kingside);
+  if (algebraic == "O-O-O" || algebraic == "0-0-0")
+    return Move(squares::e1.index, squares::c1.index, Move::Type::castle_queenside);
+
+  boost::regex algebraic_move_regex("([NBRQK]?)([a-h])?([1-8])?(x)?([a-h][1-8])\\+?");
   boost::smatch m;
   if (!boost::regex_match(algebraic, m, algebraic_move_regex))
     throw std::runtime_error(str(boost::format("can't parse algebraic move: %1%") % algebraic));
@@ -258,6 +265,7 @@ std::vector<Move> State::match_algebraic(const Piece piece,
                                          const Square& target,
                                          const bool is_capture) const {
   std::vector<Move> candidates;
+  // TODO: maybe check legality?
   moves::piece_moves(candidates, piece, us, them, board, occupancy, en_passant_square);
 
   for (auto it = candidates.begin(); it != candidates.end(); ) {
@@ -311,9 +319,15 @@ void State::make_move_on_occupancy(const Move& move,
     else
       occupancy[them] &= ~target;
     break;
-  case Move::Type::double_push:
   case Move::Type::castle_kingside:
+    occupancy[us] &= ~squares::h1;
+    occupancy[us] |=  squares::f1;
+    break;
   case Move::Type::castle_queenside:
+    occupancy[us] &= ~squares::a1;
+    occupancy[us] |=  squares::d1;
+    break;
+  case Move::Type::double_push:
   case Move::Type::promotion_knight:
   case Move::Type::promotion_bishop:
   case Move::Type::promotion_rook:
