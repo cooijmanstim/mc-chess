@@ -11,10 +11,15 @@
 #include "direction.hpp"
 #include "state.hpp"
 #include "moves.hpp"
+#include "hash.hpp"
 
 // NOTE: evaluates arguments twice
 #define BOOST_CHECK_BITBOARDS_EQUAL(a, b) \
   BOOST_CHECK_MESSAGE((a) == (b), boost::format("%|1$#x| != %|2$#x|") % (a) % (b));
+
+BOOST_AUTO_TEST_CASE(randompoop) {
+  hashes::generate_random_feature();
+}
 
 BOOST_AUTO_TEST_CASE(partitions) {
   using namespace squares;
@@ -31,7 +36,7 @@ BOOST_AUTO_TEST_CASE(initial_moves) {
 
   std::set<Move> expected_moves;
   using namespace directions;
-  bitboard::for_each_member(ranks::_2, [&expected_moves](squares::Index from) {
+  bitboard::for_each_member(ranks::_2.bitboard, [&expected_moves](squares::Index from) {
       expected_moves.emplace(from, from +   north, Move::Type::normal);
       expected_moves.emplace(from, from + 2*north, Move::Type::double_push);
     });
@@ -62,10 +67,10 @@ BOOST_AUTO_TEST_CASE(rays_every_which_way) {
   Rank rank = ranks::partition.parts_by_square_index[rook_square.index];
   File file = files::partition.parts_by_square_index[rook_square.index];
 
-  Bitboard bda = moves::slides(bishop_square, bishop_square, diagonal & ~bishop_square);
-  Bitboard bga = moves::slides(bishop_square, bishop_square, giadonal & ~bishop_square);
-  Bitboard rra = moves::slides_rank(rook_square, rook_square, rank);
-  Bitboard rfa = moves::slides(rook_square, rook_square, file & ~rook_square);
+  Bitboard bda = moves::slides(bishop_square.bitboard, bishop_square.bitboard, diagonal & ~bishop_square);
+  Bitboard bga = moves::slides(bishop_square.bitboard, bishop_square.bitboard, giadonal & ~bishop_square);
+  Bitboard rra = moves::slides_rank(rook_square.bitboard, rook_square.bitboard, rank);
+  Bitboard rfa = moves::slides(rook_square.bitboard, rook_square.bitboard, file & ~rook_square);
 
   BOOST_CHECK_BITBOARDS_EQUAL(bda, 0x0408100040800000);
   BOOST_CHECK_BITBOARDS_EQUAL(bga, 0x0080400010080402);

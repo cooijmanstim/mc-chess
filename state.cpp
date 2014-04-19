@@ -19,22 +19,24 @@ State::State() :
   using namespace pieces;
   using namespace squares;
 
-  board[white][pawn] = ranks::_2;
+  board[white][pawn] = ranks::_2.bitboard;
   board[white][knight] = b1 | g1;
   board[white][bishop] = c1 | f1;
   board[white][rook] = a1 | h1;
-  board[white][queen] = d1;
-  board[white][king] = e1;
+  board[white][queen] = d1.bitboard;
+  board[white][king] = e1.bitboard;
 
-  board[black][pawn] = ranks::_7;
+  board[black][pawn] = ranks::_7.bitboard;
   board[black][knight] = b8 | g8;
   board[black][bishop] = c8 | f8;
   board[black][rook] = a8 | h8;
-  board[black][queen] = d8;
-  board[black][king] = e8;
+  board[black][queen] = d8.bitboard;
+  board[black][king] = e8.bitboard;
 
   can_castle_kingside.fill(true);
   can_castle_queenside.fill(true);
+
+  compute_hash();
 }
 
 State::State(std::string fen)
@@ -64,7 +66,7 @@ State::State(std::string fen)
       } else {
         Color owner = islower(c) ? colors::black : colors::white;
         c = tolower(c);
-        Bitboard square = squares::partition[square_index];
+        Bitboard square = squares::partition[square_index].bitboard;
         switch (c) {
         case 'p': this->board[owner][pawn]   |= square; break;
         case 'n': this->board[owner][knight] |= square; break;
@@ -86,7 +88,7 @@ State::State(std::string fen)
   can_castle_queenside = {m[6].matched, m[8].matched};
 
   if (m[10].matched)
-    en_passant_square = squares::partition[std::string(m[10].first, m[10].second)];
+    en_passant_square = squares::partition[std::string(m[10].first, m[10].second)].bitboard;
 
   us = colors::white;
   them = colors::black;
@@ -97,6 +99,8 @@ State::State(std::string fen)
     flip_perspective();
   compute_attacks();
   flip_perspective();
+
+  compute_hash();
 }
 
 State::State(State &that) :
@@ -107,7 +111,8 @@ State::State(State &that) :
   can_castle_queenside(that.can_castle_queenside),
   en_passant_square(that.en_passant_square),
   occupancy(that.occupancy),
-  their_attacks(that.their_attacks)
+  their_attacks(that.their_attacks),
+  hash(that.hash)
 {
 }
 
@@ -123,7 +128,8 @@ bool State::operator==(const State &that) const {
   if (this == &that)
     return true;
   
-  return this->us == that.us && this->them == that.them &&
+  return this->hash == that.hash &&
+         this->us == that.us && this->them == that.them &&
          this->en_passant_square == that.en_passant_square &&
          this->can_castle_kingside == that.can_castle_kingside &&
          this->can_castle_queenside == that.can_castle_queenside &&
@@ -187,17 +193,20 @@ bool State::leaves_king_in_check(const Move& move) const {
 
   // king move?
   if (source & board[us][pieces::king])
-    return their_attacks & target;
+    return target & their_attacks;
 
   // only occupancy and their halfboard make a difference
   Occupancy occupancy(this->occupancy);
+  Halfboard their_halfboard(board[them]);
+
+  Hash hash; // we don't care about this
   make_move_on_occupancy(move, source, target, occupancy);
+  make_move_on_their_halfboard(move, moving_piece(move, board[us]), source, target, their_halfboard, hash);
+
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
 
-  Halfboard their_halfboard(board[them]);
-  make_move_on_their_halfboard(move, moving_piece(move, board[us]), source, target, their_halfboard);
-
+  // FIXME: this can't be right; their_halfboard is the wrong way around
   return moves::all_attacks(flat_occupancy, their_halfboard) & board[us][pieces::king];
 }
 
@@ -305,8 +314,10 @@ Piece State::moving_piece(const Move& move, const Halfboard& us) const {
 void State::make_move_on_occupancy(const Move& move,
                                    const Square& source, const Square& target,
                                    Occupancy& occupancy) const {
+  using namespace squares;
+
   occupancy[us] &= ~source;
-  occupancy[us] |=  target;
+  occupancy[us] |=  target.bitboard;
 
   switch (move.type()) {
   case Move::Type::capturing_promotion_knight:
@@ -314,18 +325,18 @@ void State::make_move_on_occupancy(const Move& move,
   case Move::Type::capturing_promotion_rook:
   case Move::Type::capturing_promotion_queen:
   case Move::Type::capture:
-    if (target == en_passant_square)
+    if (target.bitboard == en_passant_square)
       occupancy[them] &= ~(target >> directions::vertical);
     else
       occupancy[them] &= ~target;
     break;
   case Move::Type::castle_kingside:
-    occupancy[us] &= ~squares::h1;
-    occupancy[us] |=  squares::f1;
+    occupancy[us] &= ~h1;
+    occupancy[us] |=  f1.bitboard;
     break;
   case Move::Type::castle_queenside:
-    occupancy[us] &= ~squares::a1;
-    occupancy[us] |=  squares::d1;
+    occupancy[us] &= ~a1;
+    occupancy[us] |=  d1.bitboard;
     break;
   case Move::Type::double_push:
   case Move::Type::promotion_knight:
@@ -341,20 +352,33 @@ void State::make_move_on_occupancy(const Move& move,
 
 void State::make_move_on_their_halfboard(const Move& move, const Piece piece,
                                          const Square& source, const Square& target,
-                                         Halfboard& their_halfboard) const {
+                                         Halfboard& their_halfboard, Hash& hash) const {
+  using hashes::toggle;
+
   switch (move.type()) {
   case Move::Type::capturing_promotion_knight:
   case Move::Type::capturing_promotion_bishop:
   case Move::Type::capturing_promotion_rook:
   case Move::Type::capturing_promotion_queen:
   case Move::Type::capture:
-    if (target == en_passant_square) {
+    if (target.bitboard == en_passant_square) {
       assert(piece == pieces::pawn);
-      // the captured pawn is south from target
-      their_halfboard[pieces::pawn] &= ~(target >> directions::vertical);
+      // the captured pawn is in front of the en_passant_square
+      // FIXME: don't flip; flip only before calling out to moves::*()
+      Bitboard capture_target = us == colors::white ? target >> directions::vertical
+                                                    : target << directions::vertical;
+      assert(their_halfboard[pieces::pawn] & capture_target);
+
+      their_halfboard[pieces::pawn] &= ~capture_target;
+      toggle(hash, them, pieces::pawn, squares::index_from_bitboard(capture_target));
     } else {
-      for (Piece capturee: pieces::values)
-        their_halfboard[capturee] &= ~target;
+      for (Piece capturee: pieces::values) {
+        if (their_halfboard[capturee] & target.bitboard) {
+          their_halfboard[capturee] &= ~target;
+          toggle(hash, them, capturee, target.index);
+          break;
+        }
+      }
     }
     break;
   case Move::Type::double_push:
@@ -373,44 +397,46 @@ void State::make_move_on_their_halfboard(const Move& move, const Piece piece,
 
 void State::make_move_on_our_halfboard(const Move& move, const Piece piece,
                                        const Square& source, const Square& target,
-                                       Halfboard& our_halfboard) const {
-  our_halfboard[piece] &= ~source;
-  our_halfboard[piece] |= target;
-
+                                       Halfboard& our_halfboard, Hash& hash) const {
   using namespace pieces;
+  using namespace squares;
+  using hashes::toggle;
+
+  our_halfboard[piece] &= ~source; toggle(hash, us, piece, source.index);
+  our_halfboard[piece] |=  target; toggle(hash, us, piece, target.index);
 
   switch (move.type()) {
   case Move::Type::castle_kingside:
-    our_halfboard[rook] &= ~squares::h1;
-    our_halfboard[rook] |=  squares::f1;
+    our_halfboard[rook] &= ~h1; toggle(hash, us, rook, h1.index);
+    our_halfboard[rook] |=  f1; toggle(hash, us, rook, f1.index);
     break;
   case Move::Type::castle_queenside:
-    our_halfboard[rook] &= ~squares::a1;
-    our_halfboard[rook] |=  squares::d1;
+    our_halfboard[rook] &= ~a1; toggle(hash, us, rook, a1.index);
+    our_halfboard[rook] |=  d1; toggle(hash, us, rook, d1.index);
     break;
   case Move::Type::capturing_promotion_knight:
   case Move::Type::promotion_knight:
     assert(piece == pawn);
-    our_halfboard[piece] &= ~target;
-    our_halfboard[knight] |= target;
+    our_halfboard[piece]  &= ~target; toggle(hash, us, piece,  target.index);
+    our_halfboard[knight] |=  target; toggle(hash, us, knight, target.index);
     break;
   case Move::Type::capturing_promotion_bishop:
   case Move::Type::promotion_bishop:
     assert(piece == pawn);
-    our_halfboard[piece] &= ~target;
-    our_halfboard[bishop] |= target;
+    our_halfboard[piece]  &= ~target; toggle(hash, us, piece,  target.index);
+    our_halfboard[bishop] |=  target; toggle(hash, us, bishop, target.index);
     break;
   case Move::Type::capturing_promotion_rook:
   case Move::Type::promotion_rook:
     assert(piece == pawn);
-    our_halfboard[piece] &= ~target;
-    our_halfboard[rook] |= target;
+    our_halfboard[piece] &= ~target; toggle(hash, us, piece, target.index);
+    our_halfboard[rook]  |=  target; toggle(hash, us, rook,  target.index);
     break;
   case Move::Type::capturing_promotion_queen:
   case Move::Type::promotion_queen:
     assert(piece == pawn);
-    our_halfboard[piece] &= ~target;
-    our_halfboard[queen] |= target;
+    our_halfboard[piece] &= ~target; toggle(hash, us, piece, target.index);
+    our_halfboard[queen] |=  target; toggle(hash, us, queen, target.index);
     break;
   case Move::Type::capture:
   case Move::Type::double_push:
@@ -424,25 +450,40 @@ void State::make_move_on_our_halfboard(const Move& move, const Piece piece,
 void State::update_castling_rights(const Move& move, const Piece piece,
                                    const Square& source, const Square& target,
                                    bool& can_castle_kingside,
-                                   bool& can_castle_queenside) const {
+                                   bool& can_castle_queenside,
+                                   Hash& hash) const {
   if (piece == pieces::king) {
-    can_castle_kingside = false;
-    can_castle_queenside = false;
-  } else if (piece == pieces::rook) {
-    if (source == squares::h1)
+    if (can_castle_kingside) {
       can_castle_kingside = false;
-    else if (source == squares::a1)
+      hash ^= hashes::can_castle_kingside(us);
+    }
+    if (can_castle_queenside) {
       can_castle_queenside = false;
+      hash ^= hashes::can_castle_queenside(us);
+    }
+  } else if (piece == pieces::rook) {
+    if (source == squares::h1 && can_castle_kingside) {
+      can_castle_kingside = false;
+      hash ^= hashes::can_castle_kingside(us);
+    } else if (source == squares::a1 && can_castle_queenside) {
+      can_castle_queenside = false;
+      hash ^= hashes::can_castle_queenside(us);
+    }
   }
 }
 
 void State::update_en_passant_square(const Move& move, const Piece piece,
                                      const Square& source, const Square& target,
-                                     Bitboard& en_passant_square) const {
+                                     Bitboard& en_passant_square, Hash& hash) const {
+  if (en_passant_square)
+    hash ^= hashes::en_passant(en_passant_square);
+
   switch (move.type()) {
   case Move::Type::double_push:
     assert(piece == pieces::pawn);
-    en_passant_square = target >> directions::vertical;
+    en_passant_square = us == colors::white ? target >> directions::vertical
+                                            : target << directions::vertical;
+    hash ^= hashes::en_passant(en_passant_square);
     break;
   case Move::Type::capture:
   case Move::Type::castle_kingside:
@@ -465,11 +506,11 @@ void State::make_move(const Move& move) {
   Halfboard& our_halfboard = board[us];
   Piece piece = moving_piece(move, our_halfboard);
 
-  update_castling_rights(move, piece, source, target, can_castle_kingside[us], can_castle_queenside[us]);
-  make_move_on_our_halfboard(move, piece, source, target, board[us]);
-  make_move_on_their_halfboard(move, piece, source, target, board[them]);
+  update_castling_rights(move, piece, source, target, can_castle_kingside[us], can_castle_queenside[us], hash);
+  make_move_on_our_halfboard(move, piece, source, target, board[us], hash);
+  make_move_on_their_halfboard(move, piece, source, target, board[them], hash);
   make_move_on_occupancy(move, source, target, occupancy);
-  update_en_passant_square(move, piece, source, target, en_passant_square);
+  update_en_passant_square(move, piece, source, target, en_passant_square, hash);
 
   compute_attacks();
   flip_perspective();
@@ -484,6 +525,27 @@ void State::compute_attacks() {
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
   their_attacks = moves::all_attacks(flat_occupancy, board[us]);
+}
+
+void State::compute_hash() {
+  hash = 0;
+
+  for (Color c: colors::values) {
+    for (Piece p: pieces::values) {
+      bitboard::for_each_member(board[c][p], [this, &c, &p](squares::Index si) {
+          hash ^= hashes::colored_piece_at_square(c, p, si);
+        });
+    }
+
+    if (can_castle_kingside[c])  hash ^= hashes::can_castle_kingside(c);
+    if (can_castle_queenside[c]) hash ^= hashes::can_castle_queenside(c);
+
+    if (us == colors::black)
+      hash ^= hashes::black_to_move();
+
+    if (en_passant_square)
+      hash ^= hashes::en_passant(en_passant_square);
+  }
 }
 
 void State::flip_perspective() {

@@ -9,6 +9,7 @@
 #include "board.hpp"
 #include "bitboard.hpp"
 #include "moves.hpp"
+#include "hash.hpp"
 
 class State {
 public:
@@ -26,6 +27,7 @@ public:
   // redundant
   Occupancy occupancy;
   Bitboard their_attacks;
+  Hash hash;
 
   State();
   State(std::string fen);
@@ -51,6 +53,7 @@ public:
 
   void compute_occupancy();
   void compute_attacks();
+  void compute_hash();
   void flip_perspective();
 
   Piece moving_piece(const Move& move, const Halfboard& us) const;
@@ -60,15 +63,19 @@ public:
                               Occupancy& occupancy) const;
   void make_move_on_their_halfboard(const Move& move, const Piece piece,
                                     const Square& source, const Square& target,
-                                    Halfboard& their_halfboard) const;
+                                    Halfboard& their_halfboard,
+                                    Hash& hash) const;
   void make_move_on_our_halfboard(const Move& move, const Piece piece,
                                   const Square& source, const Square& target,
-                                  Halfboard& our_halfboard) const;
+                                  Halfboard& our_halfboard,
+                                  Hash& hash) const;
   void update_castling_rights(const Move& move, const Piece piece,
                               const Square& source, const Square& target,
                               bool& can_castle_kingside,
-                              bool& can_castle_queenside) const;
+                              bool& can_castle_queenside,
+                              Hash& hash) const;
   void update_en_passant_square(const Move& move, const Piece piece,
                                 const Square& source, const Square& target,
-                                Bitboard& en_passant_square) const;
+                                Bitboard& en_passant_square,
+                                Hash& hash) const;
 };

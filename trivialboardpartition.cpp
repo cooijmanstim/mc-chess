@@ -3,14 +3,24 @@
 #include "prettyprint.hpp"
 #include "trivialboardpartition.hpp"
 
-bool TrivialBoardPartition::Part::operator==(const Part& that) const { return this->bitboard == that.bitboard; }
+#define pfft(op) \
+Bitboard operator op (const Bitboard x, const TrivialBoardPartition::Part& y) { return x op y.bitboard; } \
+Bitboard operator op (const TrivialBoardPartition::Part& y, const Bitboard x) { return y.bitboard op x; } \
+Bitboard operator op (const TrivialBoardPartition::Part& x, const TrivialBoardPartition::Part& y) { return x.bitboard op y.bitboard; } \
+Bitboard operator op ## = (Bitboard& x, const TrivialBoardPartition::Part& y) { return x op ## = y.bitboard; }
+pfft(&);
+pfft(|);
+pfft(^);
+#undef pfft
+Bitboard operator~(const TrivialBoardPartition::Part& x) { return ~x.bitboard; }
+Bitboard operator<<(const TrivialBoardPartition::Part& x, const unsigned int k) { return x.bitboard << k; }
+Bitboard operator>>(const TrivialBoardPartition::Part& x, const unsigned int k) { return x.bitboard >> k; }
 
-Bitboard TrivialBoardPartition::Part::operator|(const Part& that) const { return this->bitboard | that.bitboard; }
-Bitboard TrivialBoardPartition::Part::operator&(const Part& that) const { return this->bitboard & that.bitboard; }
-Bitboard TrivialBoardPartition::Part::operator^(const Part& that) const { return this->bitboard ^ that.bitboard; }
-Bitboard TrivialBoardPartition::Part::operator~() const { return ~this->bitboard; }
+bool operator==(const TrivialBoardPartition::Part& y, const Bitboard x) { return y.bitboard == x; }
+bool operator==(const Bitboard x, const TrivialBoardPartition::Part& y) { return y.bitboard == x; }
 
-TrivialBoardPartition::Part::operator Bitboard() const { return this->bitboard; }
+bool TrivialBoardPartition::Part::operator==(const TrivialBoardPartition::Part& that) const { return this->bitboard == that.bitboard; }
+bool TrivialBoardPartition::Part::operator!=(const TrivialBoardPartition::Part& that) const { return this->bitboard != that.bitboard; }
 
 TrivialBoardPartition::TrivialBoardPartition(std::initializer_list<std::string> names,
                                              std::function<Bitboard(Index)> bitboard_from_index) :

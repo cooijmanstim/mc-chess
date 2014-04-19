@@ -17,14 +17,7 @@ public:
     Bitboard bitboard;
 
     bool operator==(const Part& that) const;
-
-    // bitwise operators on Parts imply bitboard operations
-    Bitboard operator|(const Part& that) const;
-    Bitboard operator&(const Part& that) const;
-    Bitboard operator^(const Part& that) const;
-    Bitboard operator~() const;
-
-    operator Bitboard() const;
+    bool operator!=(const Part& that) const;
   };
 
   const size_t cardinality;
@@ -43,3 +36,21 @@ public:
 };
 
 std::ostream& operator<<(std::ostream& o, const TrivialBoardPartition::Part& p);
+
+#define pfft(op) \
+Bitboard operator op (const Bitboard x, const TrivialBoardPartition::Part& y); \
+Bitboard operator op (const TrivialBoardPartition::Part& y, const Bitboard x); \
+Bitboard operator op (const TrivialBoardPartition::Part& x, const TrivialBoardPartition::Part& y); \
+Bitboard operator op ## = (Bitboard& x, const TrivialBoardPartition::Part& y);
+pfft(&);
+pfft(|);
+pfft(^);
+#undef pfft
+
+bool operator==(const TrivialBoardPartition::Part& y, const Bitboard x);
+bool operator==(const Bitboard x, const TrivialBoardPartition::Part& y);
+
+Bitboard operator~(const TrivialBoardPartition::Part& x);
+Bitboard operator<<(const TrivialBoardPartition::Part& x, const unsigned int k);
+Bitboard operator>>(const TrivialBoardPartition::Part& x, const unsigned int k);
+
