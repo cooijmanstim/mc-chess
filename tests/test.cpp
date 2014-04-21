@@ -205,31 +205,6 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   BOOST_CHECK_MESSAGE(falsepositives.empty(), "illegal moves generated: " << falsepositives);
 }
 
-BOOST_AUTO_TEST_CASE(monochromicity_algebraic) {
-  State state;
-
-  // after white's first move, black should have the exact same set of moves available
-  std::vector<Move> expected_moves = state.moves();
-
-  state.make_moves("e4");
-  BOOST_CHECK_BITBOARDS_EQUAL(state.board[state.us][pieces::pawn], ranks::_2);
-  BOOST_CHECK_BITBOARDS_EQUAL(state.en_passant_square, squares::e6.bitboard);
-
-  std::cout << state << std::endl;
-
-  std::vector<Move> actual_moves = state.moves();
-
-  std::set<Move> falsenegatives, falsepositives;
-  std::set_difference(expected_moves.begin(), expected_moves.end(),
-                      actual_moves.begin(), actual_moves.end(),
-                      std::inserter(falsenegatives, falsenegatives.begin()));
-  std::set_difference(actual_moves.begin(), actual_moves.end(),
-                      expected_moves.begin(), expected_moves.end(),
-                      std::inserter(falsepositives, falsepositives.begin()));
-  BOOST_CHECK_MESSAGE(falsenegatives.empty(), "legal moves not generated: " << falsenegatives);
-  BOOST_CHECK_MESSAGE(falsepositives.empty(), "illegal moves generated: " << falsepositives);
-}
-
 BOOST_AUTO_TEST_CASE(algebraic_moves) {
   using namespace colors;
   using namespace pieces;

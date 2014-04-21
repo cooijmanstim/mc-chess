@@ -52,7 +52,7 @@ public:
   void make_move(const Move& m);
 
   void compute_occupancy();
-  void compute_attacks();
+  void compute_their_attacks();
   void compute_hash();
   void flip_perspective();
 

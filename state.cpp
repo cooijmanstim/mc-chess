@@ -9,12 +9,7 @@
 #include "state.hpp"
 #include "direction.hpp"
 
-State::State() :
-  us(colors::white), them(colors::black),
-  en_passant_square(0),
-  occupancy({0x000000000000ffff, 0xffff000000000000}),
-  their_attacks(0xe7ffff0000000000)
-{
+State::State() {
   using namespace colors;
   using namespace pieces;
   using namespace squares;
@@ -36,6 +31,12 @@ State::State() :
   can_castle_kingside.fill(true);
   can_castle_queenside.fill(true);
 
+  en_passant_square = 0;
+
+  us = white; them = black;
+
+  compute_occupancy();
+  compute_their_attacks();
   compute_hash();
 }
 
@@ -90,16 +91,11 @@ State::State(std::string fen)
   if (m[10].matched)
     en_passant_square = squares::partition[std::string(m[10].first, m[10].second)].bitboard;
 
-  us = colors::white;
-  them = colors::black;
+  us = color_to_move;
+  them = us == colors::white ? colors::black : colors::white;
 
   compute_occupancy();
-
-  if (color_to_move == colors::white)
-    flip_perspective();
-  compute_attacks();
-  flip_perspective();
-
+  compute_their_attacks();
   compute_hash();
 }
 
@@ -143,11 +139,9 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
   };
 
   Board board(s.board);
-  if (s.us == colors::white) {
-    // squares run from white to black, output runs from top to bottom.  flip
-    // the board to get white on the bottom.
-    board::flip_vertically(board);
-  }
+  // squares run from white to black, output runs from top to bottom.  flip
+  // the board to get white on the bottom.
+  board::flip_vertically(board);
 
   for (Square square: squares::partition) {
     o << ' ';
@@ -191,32 +185,32 @@ bool State::leaves_king_in_check(const Move& move) const {
   const Square source = squares::partition[move.from()],
                target = squares::partition[move.to()];
 
+  Bitboard king = board[us][pieces::king];
+
   // king move?
-  if (source & board[us][pieces::king])
+  if (source & king)
     return target & their_attacks;
 
   // only occupancy and their halfboard make a difference
   Occupancy occupancy(this->occupancy);
   Halfboard their_halfboard(board[them]);
 
-  Hash hash; // we don't care about this
+  Hash hash; // we don't care about what happens to this
   make_move_on_occupancy(move, source, target, occupancy);
   make_move_on_their_halfboard(move, moving_piece(move, board[us]), source, target, their_halfboard, hash);
 
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
-
-  // FIXME: this can't be right; their_halfboard is the wrong way around
-  return moves::all_attacks(flat_occupancy, their_halfboard) & board[us][pieces::king];
+  return moves::attacks(them, flat_occupancy, their_halfboard) & king;
 }
 
 std::vector<Move> State::moves() const {
   // TODO: maybe reserve()
   std::vector<Move> moves;
-  moves::all_moves(moves, us, them,
-                   board, occupancy,
-                   their_attacks, en_passant_square,
-                   can_castle_kingside[us], can_castle_queenside[us]);
+  moves::moves(moves, us, them,
+               board, occupancy,
+               their_attacks, en_passant_square,
+               can_castle_kingside[us], can_castle_queenside[us]);
 
   // filter out moves that would leave the king in check
   for (auto it = moves.begin(); it != moves.end(); ) {
@@ -231,60 +225,53 @@ std::vector<Move> State::moves() const {
 }
 
 Move State::parse_algebraic(std::string algebraic) const {
-  // TODO: maybe check legality?
-  // TODO: this castling knowledge is repeated all over the place... dry up
-  if (algebraic == "O-O" || algebraic == "0-0")
-    return Move(squares::e1.index, squares::g1.index, Move::Type::castle_kingside);
-  if (algebraic == "O-O-O" || algebraic == "0-0-0")
-    return Move(squares::e1.index, squares::c1.index, Move::Type::castle_queenside);
-
-  boost::regex algebraic_move_regex("([NBRQK]?)([a-h])?([1-8])?(x)?([a-h][1-8])\\+?");
+  boost::regex algebraic_move_regex("([NBRQK]?)([a-h])?([1-8])?(x)?([a-h][1-8])\\+?|(O-O-O|0-0-0)|(O-O|0-0)");
   boost::smatch m;
   if (!boost::regex_match(algebraic, m, algebraic_move_regex))
     throw std::runtime_error(str(boost::format("can't parse algebraic move: %1%") % algebraic));
 
-  Piece piece = pieces::type_from_name(std::string(m[1].first, m[1].second));
+  std::function<bool(const Move&)> predicate;
+  if (m[6].matched) {
+    predicate = [](const Move& move) {
+      return move.type() == Move::Type::castle_queenside;
+    };
+  } else if (m[7].matched) {
+    predicate = [](const Move& move) {
+      return move.type() == Move::Type::castle_kingside;
+    };
+  } else {
+    Piece piece = pieces::type_from_name(std::string(m[1].first, m[1].second));
 
-  boost::optional<File> source_file;
-  boost::optional<Rank> source_rank;
-  if (m[2].matched) source_file = files::partition[std::string(m[2].first, m[2].second)];
-  if (m[3].matched) source_rank = ranks::partition[std::string(m[3].first, m[3].second)];
+    boost::optional<File> source_file;
+    boost::optional<Rank> source_rank;
+    if (m[2].matched) source_file = files::partition[std::string(m[2].first, m[2].second)];
+    if (m[3].matched) source_rank = ranks::partition[std::string(m[3].first, m[3].second)];
 
-  bool is_capture = m[4].matched;
-  Square target = squares::partition[std::string(m[5].first, m[5].second)];
+    bool is_capture = m[4].matched;
+    Square target = squares::partition[std::string(m[5].first, m[5].second)];
 
-  // deal with monochromicity
-  if (us == colors::black) {
-    target = squares::from_bitboard(bitboard::flip_vertically(target.bitboard));
-    if (source_rank)
-      source_rank = ranks::partition[ranks::partition.cardinality - source_rank->index - 1];
+    // TODO: check piece == moving_piece(...)
+
+    predicate = [source_file, source_rank, is_capture, target](const Move& move) {
+      return move.matches_algebraic(source_file, source_rank, target, is_capture);
+    };
   }
 
-  std::vector<Move> candidates = match_algebraic(piece, source_file, source_rank, target, is_capture);
-  if (candidates.empty())
-    throw std::runtime_error(str(boost::format("no match for algebraic move: %1%") % algebraic));
-  if (candidates.size() > 1)
-    throw std::runtime_error(str(boost::format("ambiguous algebraic move: %1%, candidates: %2%") % algebraic % candidates));
-  return candidates[0];
-}
-
-std::vector<Move> State::match_algebraic(const Piece piece,
-                                         boost::optional<File> source_file,
-                                         boost::optional<Rank> source_rank,
-                                         const Square& target,
-                                         const bool is_capture) const {
-  std::vector<Move> candidates;
-  // TODO: maybe check legality?
-  moves::piece_moves(candidates, piece, us, them, board, occupancy, en_passant_square);
+  std::vector<Move> candidates = moves();
 
   for (auto it = candidates.begin(); it != candidates.end(); ) {
-    if (!it->matches_algebraic(source_file, source_rank, target, is_capture)) {
+    if (!predicate(*it)) {
       it = candidates.erase(it);
     } else {
       it++;
     }
   }
-  return candidates;
+
+  if (candidates.empty())
+    throw std::runtime_error(str(boost::format("no match for algebraic move: %1%") % algebraic));
+  if (candidates.size() > 1)
+    throw std::runtime_error(str(boost::format("ambiguous algebraic move: %1%, candidates: %2%") % algebraic % candidates));
+  return candidates[0];
 }
 
 void State::make_moves(std::string algebraic_variation) {
@@ -308,6 +295,8 @@ Piece State::moving_piece(const Move& move, const Halfboard& us) const {
     if (us[piece] & source)
       return piece;
   }
+  std::cerr << move << " " << us << std::endl;
+  print_backtrace();
   assert(false);
 }
 
@@ -364,7 +353,6 @@ void State::make_move_on_their_halfboard(const Move& move, const Piece piece,
     if (target.bitboard == en_passant_square) {
       assert(piece == pieces::pawn);
       // the captured pawn is in front of the en_passant_square
-      // FIXME: don't flip; flip only before calling out to moves::*()
       Bitboard capture_target = us == colors::white ? target >> directions::vertical
                                                     : target << directions::vertical;
       assert(their_halfboard[pieces::pawn] & capture_target);
@@ -512,19 +500,19 @@ void State::make_move(const Move& move) {
   make_move_on_occupancy(move, source, target, occupancy);
   update_en_passant_square(move, piece, source, target, en_passant_square, hash);
 
-  compute_attacks();
-  flip_perspective();
+  std::swap(us, them);
+
+  compute_their_attacks();
 }
 
 void State::compute_occupancy() {
   board::flatten(board, occupancy);
 }
 
-// NOTE: computes our attacks and assigns to their_attacks; caller should flip_perspective() after this
-void State::compute_attacks() {
+void State::compute_their_attacks() {
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
-  their_attacks = moves::all_attacks(flat_occupancy, board[us]);
+  their_attacks = moves::attacks(them, flat_occupancy, board[them]);
 }
 
 void State::compute_hash() {
@@ -546,13 +534,4 @@ void State::compute_hash() {
     if (en_passant_square)
       hash ^= hashes::en_passant(en_passant_square);
   }
-}
-
-void State::flip_perspective() {
-  board::flip_vertically(board);
-  board::flip_vertically(en_passant_square);
-  board::flip_vertically(occupancy);
-  board::flip_vertically(their_attacks);
-
-  std::swap(us, them);
 }
