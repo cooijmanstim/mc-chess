@@ -377,6 +377,7 @@ void moves::moves(std::vector<Move>& moves,
   GENERATE_MOVES(bishop);
   GENERATE_MOVES(rook);
   GENERATE_MOVES(queen);
+  GENERATE_MOVES(king);
 #undef GENERATE_MOVES
   castle(moves, us, them, occupancy, their_attacks, can_castle_kingside, can_castle_queenside);
 }

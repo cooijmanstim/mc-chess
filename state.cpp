@@ -252,8 +252,12 @@ Move State::parse_algebraic(std::string algebraic) const {
 
     // TODO: check piece == moving_piece(...)
 
-    predicate = [source_file, source_rank, is_capture, target](const Move& move) {
-      return move.matches_algebraic(source_file, source_rank, target, is_capture);
+    predicate = [this, &piece, &source_file, &source_rank, &is_capture, &target](const Move& move) {
+      if (!board[us][piece] & squares::bitboard_from_index(move.from()))
+        return false;
+      if (!move.matches_algebraic(source_file, source_rank, target, is_capture))
+        return false;
+      return true;
     };
   }
 

@@ -13,7 +13,7 @@ namespace squares {
                                    "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
                                   },
                                   [](size_t index) {
-                                    return Bitboard(1) << index;
+                                    return bitboard_from_index(index);
                                   });
   }();
 
@@ -27,6 +27,10 @@ namespace squares {
                                     a7 = _(48), b7 = _(49), c7 = _(50), d7 = _(51), e7 = _(52), f7 = _(53), g7 = _(54), h7 = _(55),
                                     a8 = _(56), b8 = _(57), c8 = _(58), d8 = _(59), e8 = _(60), f8 = _(61), g8 = _(62), h8 = _(63);
 #undef _
+
+  Bitboard bitboard_from_index(Index i) {
+    return Bitboard(1) << i;
+  }
 
   Index index_from_bitboard(Bitboard b) {
     // assumption that exactly one bit is set

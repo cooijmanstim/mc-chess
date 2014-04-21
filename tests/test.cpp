@@ -119,6 +119,9 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   BOOST_CHECK_BITBOARDS_EQUAL(moves::rook_attacks(flat_occupancy, squares::c3.index),
                               0x00000000041b0404);
 
+  BOOST_CHECK_BITBOARDS_EQUAL(moves::king_attacks(state.board[white][king]),
+                              0x0000000000003828);
+
   std::set<Move> expected_moves;
 
   // a1 rook

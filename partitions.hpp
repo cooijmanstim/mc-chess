@@ -16,6 +16,7 @@ namespace squares {
                                            a8, b8, c8, d8, e8, f8, g8, h8;
   const size_t cardinality = 64;
 
+  Bitboard bitboard_from_index(Index i);
   Index index_from_bitboard(Bitboard b);
   TrivialBoardPartition::Part from_bitboard(Bitboard b);
 }
