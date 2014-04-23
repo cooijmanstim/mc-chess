@@ -249,7 +249,7 @@ void moves::pawn(std::vector<Move>& moves,
   
   short direction = pd.leftshift - pd.rightshift;
 
-#define FORWARD(pawn) ((pawn << pd.leftshift >> pd.rightshift))
+#define FORWARD(pawn) ((pawn) << pd.leftshift >> pd.rightshift)
   // single push
   Bitboard single_push_targets = FORWARD(pawn) & ~flat_occupancy;
   moves_from_targets(moves, single_push_targets & ~pd.promotion_rank, -direction, relative, Move::Type::normal);
@@ -262,7 +262,7 @@ void moves::pawn(std::vector<Move>& moves,
   }
 
   // double push
-  Bitboard double_push_targets = FORWARD(FORWARD(pawn)) & pd.double_push_target_rank & ~flat_occupancy;
+  Bitboard double_push_targets = FORWARD(FORWARD(pawn) & ~flat_occupancy) & pd.double_push_target_rank & ~flat_occupancy;
   moves_from_targets(moves, double_push_targets, -2*direction, relative, Move::Type::double_push);
 #undef FORWARD
 

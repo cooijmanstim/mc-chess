@@ -250,10 +250,8 @@ Move State::parse_algebraic(std::string algebraic) const {
     bool is_capture = m[4].matched;
     Square target = squares::partition[std::string(m[5].first, m[5].second)];
 
-    // TODO: check piece == moving_piece(...)
-
-    predicate = [this, &piece, &source_file, &source_rank, &is_capture, &target](const Move& move) {
-      if (!board[us][piece] & squares::bitboard_from_index(move.from()))
+    predicate = [algebraic, this, piece, source_file, source_rank, is_capture, target](const Move& move) {
+      if (!(board[us][piece] & squares::bitboard_from_index(move.from())))
         return false;
       if (!move.matches_algebraic(source_file, source_rank, target, is_capture))
         return false;

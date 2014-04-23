@@ -215,6 +215,8 @@ BOOST_AUTO_TEST_CASE(algebraic_moves) {
 
   State state;
 
+  BOOST_CHECK(Move(e2.index, e4.index, Move::Type::double_push).matches_algebraic(NULL, NULL, e4, false));
+
   state.make_moves("e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3 Ba5 d4 exd4 0-0 d3 Qb3 Qf6");
 
   BOOST_CHECK_BITBOARDS_EQUAL(state.occupancy[white], 0x000000001426e167);
@@ -260,6 +262,8 @@ BOOST_AUTO_TEST_CASE(algebraic_moves) {
   MV(g1, f1, Move::Type::normal);
   MV(g1, h1, Move::Type::normal);
 #undef MV
+
+  std::cout << state << std::endl;
 
   std::vector<Move> moves = state.moves();
   std::set<Move> actual_moves(moves.begin(), moves.end());
