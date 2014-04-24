@@ -40,6 +40,7 @@ public:
   friend std::ostream& operator<<(std::ostream& o, const State& s);
 
   std::vector<Move> moves() const;
+  boost::optional<Move> random_move(boost::mt19937& generator) const;
 
   Move parse_algebraic(std::string algebraic) const;
   std::vector<Move> match_algebraic(const Piece piece,
@@ -54,7 +55,9 @@ public:
   void compute_occupancy();
   void compute_their_attacks();
   void compute_hash();
-  void flip_perspective();
+  void compute_occupancy(Occupancy& occupancy);
+  void compute_their_attacks(Bitboard& their_attacks);
+  void compute_hash(Hash& hash);
 
   Piece moving_piece(const Move& move, const Halfboard& us) const;
   bool leaves_king_in_check(const Move& m) const;

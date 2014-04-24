@@ -224,6 +224,16 @@ std::vector<Move> State::moves() const {
   return moves;
 }
 
+boost::optional<Move> State::random_move(boost::mt19937& generator) const {
+  // TODO: do better
+  std::vector<Move> moves = this->moves();
+  if (moves.empty())
+    return boost::none;
+  static boost::uniform_int<> distribution(0, moves.size());
+  Move move = moves[distribution(generator)];
+  return move;
+}
+
 Move State::parse_algebraic(std::string algebraic) const {
   boost::regex algebraic_move_regex("([NBRQK]?)([a-h])?([1-8])?(x)?([a-h][1-8])\\+?|(O-O-O|0-0-0)|(O-O|0-0)");
   boost::smatch m;
@@ -507,22 +517,26 @@ void State::make_move(const Move& move) {
   compute_their_attacks();
 }
 
-void State::compute_occupancy() {
+void State::compute_occupancy()     { compute_occupancy(occupancy); }
+void State::compute_their_attacks() { compute_their_attacks(their_attacks); }
+void State::compute_hash()          { compute_hash(hash); }
+
+void State::compute_occupancy(Occupancy& occupancy) {
   board::flatten(board, occupancy);
 }
 
-void State::compute_their_attacks() {
+void State::compute_their_attacks(Bitboard& their_attacks) {
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
   their_attacks = moves::attacks(them, flat_occupancy, board[them]);
 }
 
-void State::compute_hash() {
+void State::compute_hash(Hash &hash) {
   hash = 0;
 
   for (Color c: colors::values) {
     for (Piece p: pieces::values) {
-      bitboard::for_each_member(board[c][p], [this, &c, &p](squares::Index si) {
+      bitboard::for_each_member(board[c][p], [this, &c, &p, &hash](squares::Index si) {
           hash ^= hashes::colored_piece_at_square(c, p, si);
         });
     }

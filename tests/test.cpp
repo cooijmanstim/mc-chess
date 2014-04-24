@@ -278,3 +278,19 @@ BOOST_AUTO_TEST_CASE(algebraic_moves) {
   BOOST_CHECK_MESSAGE(falsenegatives.empty(), "legal moves not generated: " << falsenegatives);
   BOOST_CHECK_MESSAGE(falsepositives.empty(), "illegal moves generated: " << falsepositives);
 }
+
+BOOST_AUTO_TEST_CASE(move_randomly) {
+  State state;
+  boost::mt19937 generator;
+  for (int i = 0; i < 100; i++) {
+    boost::optional<Move> move = state.random_move(generator);
+    if (!move)
+      break;
+    std::cout << *move << std::endl;
+    state.make_move(*move);
+    Hash hash;
+    state.compute_hash(hash);
+    BOOST_CHECK(hash != 0); // probably not zero
+    BOOST_CHECK_EQUAL(state.hash, hash);
+  }
+}
