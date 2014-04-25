@@ -2,8 +2,8 @@
 
 Hash hashes::generate_random_feature() {
   static boost::random::mt19937 base_generator;
-  static boost::uniform_int<Hash> distribution;
-  static boost::variate_generator<boost::mt19937&, boost::uniform_int<Hash>> generator(base_generator, distribution);
+  static boost::random::uniform_int_distribution<Hash> distribution;
+  static boost::variate_generator<boost::mt19937&, boost::random::uniform_int_distribution<Hash>> generator(base_generator, distribution);
   return generator();
 }
 
