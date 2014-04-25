@@ -286,10 +286,6 @@ BOOST_AUTO_TEST_CASE(move_randomly) {
     boost::optional<Move> move = state.random_move(generator);
     if (!move)
       break;
-    std::cout << *move << std::endl;
-    if (move == Move(squares::e8.index, squares::d8.index, Move::Type::normal)) {
-      std::cout << state << std::endl << state.moves() << std::endl;
-    }
     state.make_move(*move);
     Hash hash;
     state.compute_hash(hash);
