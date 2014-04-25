@@ -229,8 +229,8 @@ boost::optional<Move> State::random_move(boost::mt19937& generator) const {
   std::vector<Move> moves = this->moves();
   if (moves.empty())
     return boost::none;
-  static boost::uniform_int<> distribution(0, moves.size());
-  Move move = moves[distribution(generator)];
+  boost::uniform_int<> distribution(0, moves.size() - 1);
+  Move move = moves.at(distribution(generator));
   return move;
 }
 
@@ -307,7 +307,8 @@ Piece State::moving_piece(const Move& move, const Halfboard& us) const {
     if (us[piece] & source)
       return piece;
   }
-  std::cerr << move << " " << us << std::endl;
+  std::cerr << "State::moving_piece: no match for move " << move << " in state: " << std::endl;
+  std::cerr << *this << std::endl;
   print_backtrace();
   assert(false);
 }
@@ -513,6 +514,7 @@ void State::make_move(const Move& move) {
   update_en_passant_square(move, piece, source, target, en_passant_square, hash);
 
   std::swap(us, them);
+  hash ^= hashes::black_to_move();
 
   compute_their_attacks();
 }
@@ -543,11 +545,11 @@ void State::compute_hash(Hash &hash) {
 
     if (can_castle_kingside[c])  hash ^= hashes::can_castle_kingside(c);
     if (can_castle_queenside[c]) hash ^= hashes::can_castle_queenside(c);
-
-    if (us == colors::black)
-      hash ^= hashes::black_to_move();
-
-    if (en_passant_square)
-      hash ^= hashes::en_passant(en_passant_square);
   }
+
+  if (us == colors::black)
+    hash ^= hashes::black_to_move();
+
+  if (en_passant_square)
+    hash ^= hashes::en_passant(en_passant_square);
 }
