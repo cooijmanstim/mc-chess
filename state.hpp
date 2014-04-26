@@ -18,7 +18,7 @@ public:
   Board board;
 
   // false iff the relevant rook or king has moved.
-  std::array<bool, colors::cardinality> can_castle_kingside, can_castle_queenside;
+  CastlingRights castling_rights;
 
   // if en-passant capture is possible, this is the square where a capturing
   // pawn will end up.

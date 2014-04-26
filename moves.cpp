@@ -338,30 +338,17 @@ void moves::castle(std::vector<Move>& moves,
                    const Color us, const Color them,
                    const Occupancy& occupancy,
                    const Bitboard their_attacks,
-                   const bool can_castle_kingside, const bool can_castle_queenside) {
+                   const CastlingRights castling_rights) {
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
-
+  
   using namespace squares;
-
-  if (us == colors::white) {
-    if (can_castle_kingside &&
-        !(their_attacks & (e1 | f1 | g1)) &&
-        !(flat_occupancy & (f1 | g1)))
-      moves.push_back(Move(e1.index, g1.index, Move::Type::castle_kingside));
-    if (can_castle_queenside &&
-        !(their_attacks & (e1 | d1 | c1 | b1)) &&
-        !(flat_occupancy & (d1 | c1 | b1)))
-      moves.push_back(Move(e1.index, c1.index, Move::Type::castle_queenside));
-  } else {
-    if (can_castle_kingside &&
-        !(their_attacks & (e8 | f8 | g8)) &&
-        !(flat_occupancy & (f8 | g8)))
-      moves.push_back(Move(e8.index, g8.index, Move::Type::castle_kingside));
-    if (can_castle_queenside &&
-        !(their_attacks & (e8 | d8 | c8 | b8)) &&
-        !(flat_occupancy & (d8 | c8 | b8)))
-      moves.push_back(Move(e8.index, c8.index, Move::Type::castle_queenside));
+  
+  for (Castle castle: castles::values) {
+    if (castling_rights[castle]
+        && bitboards::empty(castles::safe_squares(us, castle) & their_attacks)
+        && bitboards::empty(castles::free_squares(us, castle) & flat_occupancy))
+      moves.push_back(castles::move(us, castle));
   }
 }
 
@@ -370,7 +357,7 @@ void moves::moves(std::vector<Move>& moves,
                   const Board& board, const Occupancy& occupancy,
                   const Bitboard their_attacks,
                   const Bitboard en_passant_square,
-                  const bool can_castle_kingside, const bool can_castle_queenside) {
+                  const CastlingRights castling_rights) {
 #define GENERATE_MOVES(piece) moves::piece(moves, us, them, board[us][pieces::piece], occupancy, en_passant_square)
   GENERATE_MOVES(pawn);
   GENERATE_MOVES(knight);
@@ -379,7 +366,7 @@ void moves::moves(std::vector<Move>& moves,
   GENERATE_MOVES(queen);
   GENERATE_MOVES(king);
 #undef GENERATE_MOVES
-  castle(moves, us, them, occupancy, their_attacks, can_castle_kingside, can_castle_queenside);
+  castle(moves, us, them, occupancy, their_attacks, castling_rights);
 }
 
 std::ostream& operator<<(std::ostream& o, const Move& m) {

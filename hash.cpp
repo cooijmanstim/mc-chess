@@ -24,24 +24,15 @@ Hash hashes::colored_piece_at_square(const Color color, const Piece piece, const
   return x[square][color][piece];
 }
 
-Hash hashes::can_castle_kingside(const Color color) {
+Hash hashes::can_castle(const Color color, const Castle castle) {
   static auto x = []() {
-    std::array<Hash, colors::cardinality> x;
+    array2d<Hash, colors::cardinality, Castle::Type::cardinality> x;
     for (Color color: colors::values)
-      x[color] = generate_random_feature();
+      for (Castle castle: castles::values)
+        x[color][castle] = generate_random_feature();
     return x;
   }();
-  return x[color];
-}
-
-Hash hashes::can_castle_queenside(const Color color) {
-  static auto x = []() {
-    std::array<Hash, colors::cardinality> x;
-    for (Color color: colors::values)
-      x[color] = generate_random_feature();
-    return x;
-  }();
-  return x[color];
+  return x[color][castle];
 }
 
 Hash hashes::en_passant(const Bitboard en_passant_square) {

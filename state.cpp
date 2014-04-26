@@ -28,8 +28,7 @@ State::State() {
   board[black][queen] = d8.bitboard;
   board[black][king] = e8.bitboard;
 
-  can_castle_kingside.fill(true);
-  can_castle_queenside.fill(true);
+  castling_rights.fill(true);
 
   en_passant_square = 0;
 
@@ -85,8 +84,16 @@ State::State(std::string fen)
 
   Color color_to_move = std::string(m[3].first, m[3].second) == "w" ? colors::white : colors::black;
 
-  can_castle_kingside  = {m[5].matched, m[7].matched};
-  can_castle_queenside = {m[6].matched, m[8].matched};
+  castling_rights = {
+    [colors::white] = {
+      [castles::kingside]  = m[5].matched,
+      [castles::queenside] = m[7].matched,
+    },
+    [colors::black] = {
+      [castles::kingside]  = m[6].matched,
+      [castles::queenside] = m[8].matched,
+    },
+  };
 
   if (m[10].matched)
     en_passant_square = squares::partition[std::string(m[10].first, m[10].second)].bitboard;
@@ -103,8 +110,7 @@ State::State(State &that) :
   us(that.us),
   them(that.them),
   board(that.board),
-  can_castle_kingside(that.can_castle_kingside),
-  can_castle_queenside(that.can_castle_queenside),
+  castling_rights(that.castling_rights),
   en_passant_square(that.en_passant_square),
   occupancy(that.occupancy),
   their_attacks(that.their_attacks),
@@ -127,8 +133,7 @@ bool State::operator==(const State &that) const {
   return this->hash == that.hash &&
          this->us == that.us && this->them == that.them &&
          this->en_passant_square == that.en_passant_square &&
-         this->can_castle_kingside == that.can_castle_kingside &&
-         this->can_castle_queenside == that.can_castle_queenside &&
+         this->castling_rights == that.castling_rights &&
          this->board == that.board;
 }
 
@@ -168,10 +173,12 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
 
   o << colors::name(s.us) << " to move.";
 
-  o << " castling rights: ";
-  for (Color c: colors::values) {
-    if (s.can_castle_kingside [c]) o << symbols[c][pieces::king];
-    if (s.can_castle_queenside[c]) o << symbols[c][pieces::queen];
+  o << " castling rights: " << castling_rights;
+  for (Color color: colors::values) {
+    for (Castle castle: castles::values) {
+      if (castling_rights[color][castle])
+        o << castles::symbol(color, castle);
+    }
   }
 
   if (s.en_passant_square != 0)
@@ -210,7 +217,7 @@ std::vector<Move> State::moves() const {
   moves::moves(moves, us, them,
                board, occupancy,
                their_attacks, en_passant_square,
-               can_castle_kingside[us], can_castle_queenside[us]);
+               castling_rights);
 
   // filter out moves that would leave the king in check
   for (auto it = moves.begin(); it != moves.end(); ) {
@@ -243,11 +250,11 @@ Move State::parse_algebraic(std::string algebraic) const {
   std::function<bool(const Move&)> predicate;
   if (m[6].matched) {
     predicate = [](const Move& move) {
-      return move.type() == Move::Type::castle_queenside;
+      return move == castles::move(us, castles::queenside);
     };
   } else if (m[7].matched) {
     predicate = [](const Move& move) {
-      return move.type() == Move::Type::castle_kingside;
+      return move == castles::move(us, castles::kingside);
     };
   } else {
     Piece piece = pieces::type_from_name(std::string(m[1].first, m[1].second));
@@ -333,12 +340,9 @@ void State::make_move_on_occupancy(const Move& move,
       occupancy[them] &= ~target;
     break;
   case Move::Type::castle_kingside:
-    occupancy[us] &= ~h1;
-    occupancy[us] |=  f1.bitboard;
-    break;
   case Move::Type::castle_queenside:
-    occupancy[us] &= ~a1;
-    occupancy[us] |=  d1.bitboard;
+    occupancy[us] &= ~castles::rook_before(move).bitboard;
+    occupancy[us] |=  castles::rook_after(move).bitboard;
     break;
   case Move::Type::double_push:
   case Move::Type::promotion_knight:
@@ -408,35 +412,34 @@ void State::make_move_on_our_halfboard(const Move& move, const Piece piece,
 
   switch (move.type()) {
   case Move::Type::castle_kingside:
-    our_halfboard[rook] &= ~h1; toggle(hash, us, rook, h1.index);
-    our_halfboard[rook] |=  f1; toggle(hash, us, rook, f1.index);
-    break;
   case Move::Type::castle_queenside:
-    our_halfboard[rook] &= ~a1; toggle(hash, us, rook, a1.index);
-    our_halfboard[rook] |=  d1; toggle(hash, us, rook, d1.index);
+    Square rook0 = castles::rook_before(move);
+    Square rook1 = castles::rook_after(move);
+    our_halfboard[rook] &= ~rook0.bitboard; toggle(hash, us, rook, rook0.index);
+    our_halfboard[rook] |=  rook1.bitboard; toggle(hash, us, rook, rook1.index);
     break;
   case Move::Type::capturing_promotion_knight:
   case Move::Type::promotion_knight:
     assert(piece == pawn);
-    our_halfboard[piece]  &= ~target; toggle(hash, us, piece,  target.index);
+    our_halfboard[piece]  &= ~target; toggle(hash, us, pawn,   target.index);
     our_halfboard[knight] |=  target; toggle(hash, us, knight, target.index);
     break;
   case Move::Type::capturing_promotion_bishop:
   case Move::Type::promotion_bishop:
     assert(piece == pawn);
-    our_halfboard[piece]  &= ~target; toggle(hash, us, piece,  target.index);
+    our_halfboard[piece]  &= ~target; toggle(hash, us, pawn,   target.index);
     our_halfboard[bishop] |=  target; toggle(hash, us, bishop, target.index);
     break;
   case Move::Type::capturing_promotion_rook:
   case Move::Type::promotion_rook:
     assert(piece == pawn);
-    our_halfboard[piece] &= ~target; toggle(hash, us, piece, target.index);
+    our_halfboard[piece] &= ~target; toggle(hash, us, pawn,  target.index);
     our_halfboard[rook]  |=  target; toggle(hash, us, rook,  target.index);
     break;
   case Move::Type::capturing_promotion_queen:
   case Move::Type::promotion_queen:
     assert(piece == pawn);
-    our_halfboard[piece] &= ~target; toggle(hash, us, piece, target.index);
+    our_halfboard[piece] &= ~target; toggle(hash, us, pawn,  target.index);
     our_halfboard[queen] |=  target; toggle(hash, us, queen, target.index);
     break;
   case Move::Type::capture:
@@ -450,26 +453,24 @@ void State::make_move_on_our_halfboard(const Move& move, const Piece piece,
 
 void State::update_castling_rights(const Move& move, const Piece piece,
                                    const Square& source, const Square& target,
-                                   bool& can_castle_kingside,
-                                   bool& can_castle_queenside,
+                                   CastlingRights& castling_rights,
                                    Hash& hash) const {
-  if (piece == pieces::king) {
-    if (can_castle_kingside) {
-      can_castle_kingside = false;
-      hash ^= hashes::can_castle_kingside(us);
+  switch (piece) {
+  case pieces::king:
+    for (Castle castle: castles::values) {
+      if (castling_rights[us][castle]) {
+        castling_rights[us][castle] = false;
+        hash ^= hashes::can_castle(us, castle);
+      }
     }
-    if (can_castle_queenside) {
-      can_castle_queenside = false;
-      hash ^= hashes::can_castle_queenside(us);
+    break;
+  case pieces::rook:
+    boost::optional<Castle> castle = castles::involving(source, us);
+    if (castle && castling_rights[us][*castle]) {
+      castling_rights[us][*castle] = false;
+      hash ^= hashes::can_castle(us, castle);
     }
-  } else if (piece == pieces::rook) {
-    if (source == squares::h1 && can_castle_kingside) {
-      can_castle_kingside = false;
-      hash ^= hashes::can_castle_kingside(us);
-    } else if (source == squares::a1 && can_castle_queenside) {
-      can_castle_queenside = false;
-      hash ^= hashes::can_castle_queenside(us);
-    }
+    break;
   }
 }
 
@@ -507,7 +508,7 @@ void State::make_move(const Move& move) {
   Halfboard& our_halfboard = board[us];
   Piece piece = moving_piece(move, our_halfboard);
 
-  update_castling_rights(move, piece, source, target, can_castle_kingside[us], can_castle_queenside[us], hash);
+  update_castling_rights(move, piece, source, target, castling_rights, hash);
   make_move_on_our_halfboard(move, piece, source, target, board[us], hash);
   make_move_on_their_halfboard(move, piece, source, target, board[them], hash);
   make_move_on_occupancy(move, source, target, occupancy);
@@ -543,8 +544,9 @@ void State::compute_hash(Hash &hash) {
         });
     }
 
-    if (can_castle_kingside[c])  hash ^= hashes::can_castle_kingside(c);
-    if (can_castle_queenside[c]) hash ^= hashes::can_castle_queenside(c);
+    for (Castle castle: castles::values)
+      if (castling_rights[c][castle])
+        hash ^= hashes::can_castle(c, castle);
   }
 
   if (us == colors::black)
