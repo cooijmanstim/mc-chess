@@ -27,6 +27,6 @@ Bitboard bitboard::flip_vertically(Bitboard b) {
   return __builtin_bswap64(b);
 }
 
-Bitboard bitboard::cardinality(Bitboard b) {
+size_t bitboard::cardinality(Bitboard b) {
   return __builtin_popcount(b) == 1;
 }
