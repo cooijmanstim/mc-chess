@@ -26,3 +26,7 @@ void bitboard::for_each_member(Bitboard b, std::function<void(size_t)> f) {
 Bitboard bitboard::flip_vertically(Bitboard b) {
   return __builtin_bswap64(b);
 }
+
+Bitboard bitboard::cardinality(Bitboard b) {
+  return __builtin_popcount(b) == 1;
+}
