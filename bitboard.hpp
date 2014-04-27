@@ -12,4 +12,5 @@ namespace bitboard {
   bool is_empty(Bitboard b);
   void for_each_member(Bitboard b, std::function<void(size_t)> f);
   Bitboard flip_vertically(Bitboard b);
+  size_t cardinality(Bitboard b);
 }

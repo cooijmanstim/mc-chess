@@ -3,7 +3,7 @@
  * an enum with indices, an array for name lookup, and mappings between indices
  * and bitboards.
  */
-#if !defined(PARTITION_CARDINALITY) || !defined(PARTITION_KEYWORDS) || !defined(PARTITION_BITBOARD)
+#if !defined(PARTITION_NAMESPACE) || !defined(PARTITION_CARDINALITY) || !defined(PARTITION_KEYWORDS) || !defined(PARTITION_BITBOARD)
 #error "not all template variables defined"
 #endif
 
@@ -19,7 +19,13 @@
 #undef _
 
 #define _(key) #key,
-  std::array<std::string, cardinality> names = {
+  std::array<std::string, cardinality> keywords = {
+    PARTITION_KEYWORDS
+  };
+#undef _
+
+#define _(key) { #key, key },
+  std::map<std::string, Index> by_keyword = {
     PARTITION_KEYWORDS
   };
 #undef _
@@ -32,6 +38,13 @@
       return bitboards;
     }();
     return bitboards[i];
+  }
+
+  namespace bitboards {
+    Bitboard
+#define _(key) key = bitboard(PARTITION_NAMESPACE::key),
+      KEYWORDS;
+#undef _
   }
 
 #undef PARTITION_CARDINALITY

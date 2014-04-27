@@ -1,6 +1,7 @@
 #pragma once
 
 namespace squares {
+#define PARTITION_NAMESPACE squares
 #define PARTITION_CARDINALITY 64
 #define PARTITION_KEYWORDS \
   _(a1) _(b1) _(c1) _(d1) _(e1) _(f1) _(g1) _(h1) \
@@ -37,6 +38,7 @@ namespace squares {
   }
 
 namespace files {
+#define PARTITION_NAMESPACE files
 #define PARTITION_CARDINALITY 8
 #define PARTITION_KEYWORDS _(a) _(b) _(c) _(d) _(e) _(f) _(g) _(h)
 #define PARTITION_BITBOARD(i) (Bitboard(0x0101010101010101) << index*directions::horizontal)
@@ -45,6 +47,7 @@ BY_SQUARE
 }
 
 namespace ranks {
+#define PARTITION_NAMESPACE ranks
 #define PARTITION_CARDINALITY 8
 #define PARTITION_KEYWORDS _(_1) _(_2) _(_3) _(_4) _(_5) _(_6) _(_7) _(_8)
 #define PARTITION_BITBOARD(i) (Bitboard(0x00000000000000FF) << i*directions::vertical)
@@ -53,6 +56,7 @@ BY_SQUARE
 }
 
 namespace diagonals {
+#define PARTITION_NAMESPACE diagonals
 #define PARTITION_CARDINALITY 15
 #define PARTITION_KEYWORDS _(h8h8) _(g8h7) _(f8h6) _(e8h5) _(d8h4) _(c8h3) _(b8h2) _(a8h1) _(a7g1) _(a6f1) _(a5e1) _(a4d1) _(a3c1) _(a2b1) _(a1a1)
 #define PARTITION_BITBOARD(i) ([&i](){ \
@@ -65,6 +69,7 @@ BY_SQUARE
 }
 
 namespace giadonals {
+#define PARTITION_NAMESPACE giadonals
 #define PARTITION_CARDINALITY 15
 #define PARTITION_KEYWORDS _(a8a8) _(a7b8) _(a6c8) _(a5d8) _(a4e8) _(a3f8) _(a2g8) _(a1h8) _(b1h7) _(c1h6) _(d1h5) _(e1h4) _(f1h3) _(g1h2) _(h1h1)
 #define PARTITION_BITBOARD(i) ([&i](){ \

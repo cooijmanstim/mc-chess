@@ -31,9 +31,8 @@ std::string Move::typename_from_type(Type type) {
 Move::Move(const squares::Index from, const squares::Index to, const Type type = Type::normal) :
   move(((Word)type << offset_type) | (from << offset_from) | (to << offset_to))
 {
-  // TODO: change squares::Index to an unsigned type to catch some more bugs here
-  assert(0 <= from && from < squares::partition.cardinality);
-  assert(0 <= to   && to   < squares::partition.cardinality);
+  assert(0 <= from && from < squares::cardinality);
+  assert(0 <= to   && to   < squares::cardinality);
 }
 
 Move::Move(const Move& that) :
@@ -49,6 +48,8 @@ Move& Move::operator=(const Move& that) {
 Move::Type Move::type() const { return static_cast<Move::Type>((move >> offset_type) & ((1 << nbits_type) - 1)); }
 squares::Index Move::from() const { return (move >> offset_from) & ((1 << nbits_from) - 1); }
 squares::Index Move::to  () const { return (move >> offset_to)   & ((1 << nbits_to)   - 1); }
+squares::Index Move::source() const { return (move >> offset_from) & ((1 << nbits_from) - 1); }
+squares::Index Move::target() const { return (move >> offset_to)   & ((1 << nbits_to)   - 1); }
 
 bool Move::is_capture() const {
   switch (type()) {
@@ -67,17 +68,17 @@ bool Move::operator==(const Move& that) const { return this->move == that.move; 
 bool Move::operator!=(const Move& that) const { return this->move != that.move; }
 bool Move::operator< (const Move& that) const { return this->move <  that.move; }
 
-bool Move::matches_algebraic(boost::optional<File> source_file,
-                             boost::optional<Rank> source_rank,
-                             const Square& target,
+bool Move::matches_algebraic(boost::optional<files::Index> source_file,
+                             boost::optional<ranks::Index> source_rank,
+                             const squares::Index target,
                              const bool is_capture) const {
-  if (source_file && *source_file != files::partition.parts_by_square_index[from()])
+  if (source_file && *source_file != files::by_square(from()))
     return false;
-  if (source_rank && *source_rank != ranks::partition.parts_by_square_index[from()])
+  if (source_rank && *source_rank != ranks::by_square(from()))
     return false;
   if (is_capture && !this->is_capture())
     return false;
-  if (to() != target.index)
+  if (to() != target)
     return false;
   return true;
 }
@@ -95,61 +96,62 @@ Bitboard moves::slides(const Bitboard occupancy, const Bitboard piece, const Bit
   return forward;
 }
 
-Bitboard rank_onto_a1h8(Bitboard b, const Rank rank) {
+Bitboard rank_onto_a1h8(Bitboard b, const ranks::Index& rank) {
   // put the bits for the relevant rank into LSB
-  b = (b >> rank.index * directions::vertical) & 0xff;
+  b = (b >> rank * directions::vertical) & 0xff;
   // map LSB onto a1h8 diagonal
-  b = (b * 0x0101010101010101) & giadonals::a1h8;
+  b = (b * 0x0101010101010101) & giadonals::bitboards::a1h8;
   return b;
 }
 
-Bitboard a1h8_onto_rank(Bitboard b, const Rank rank) {
-  b &= giadonals::a1h8;
+Bitboard a1h8_onto_rank(Bitboard b, const ranks::Index& rank) {
+  b &= giadonals::bitboards::a1h8;
   // map diagonal onto MSB
   b *= 0x0101010101010101;
   // down to LSB, dropping everything except MSB
   b /= 0x0100000000000000;
   // shift up to the desired rank
-  b <<= rank.index * directions::vertical;
+  b <<= rank * directions::vertical;
   return b;
 }
 
 // like slides, but for attacks by a single rook along a rank.  slides() doesn't work for
 // that because the byteswap does not reverse the relevant bits; they are all in the same
 // byte.
-Bitboard moves::slides_rank(Bitboard occupancy, Bitboard piece, const Rank rank) {
+Bitboard moves::slides_rank(Bitboard occupancy, Bitboard piece, const ranks::Index& rank) {
   occupancy = rank_onto_a1h8(occupancy, rank);
   piece     = rank_onto_a1h8(piece,     rank);
-  Bitboard attacks = slides(occupancy, piece, giadonals::a1h8 & ~piece);
+  Bitboard attacks = slides(occupancy, piece, giadonals::bitboards::a1h8 & ~piece);
   return a1h8_onto_rank(attacks, rank);
 }
 
 using namespace directions;
 
 const std::vector<moves::PawnDingbat>& moves::get_pawn_dingbats() {
+  using namespace ranks::bitboards;
   static std::vector<PawnDingbat> pawn_dingbats = {
-    { vertical, 0, ranks::_4.bitboard, ranks::_8.bitboard },
-    { 0, vertical, ranks::_5.bitboard, ranks::_1.bitboard },
+    { vertical, 0, _4, _8 },
+    { 0, vertical, _5, _1 },
   };
   return pawn_dingbats;
 }
 
 const std::vector<moves::PawnAttackType>& moves::get_pawn_attack_types() {
+  using namespace files::bitboards;
   static std::vector<PawnAttackType> result = {
-    { 0, directions::horizontal, files::h.bitboard },
-    { directions::horizontal, 0, files::a.bitboard },
+    { 0, horizontal, h },
+    { horizontal, 0, a },
   };
   return result;
 }
 
 const std::vector<moves::KnightAttackType>& moves::get_knight_attack_types() {
-  using namespace directions;
-  using namespace files;
+  using namespace files::bitboards;
   static std::vector<KnightAttackType> result = {
-    {2*vertical +   horizontal,                         0, a.bitboard },
-    {               horizontal, 2*vertical               , a.bitboard },
-    {2*vertical               ,                horizontal, h.bitboard },
-    {                        0, 2*vertical +   horizontal, h.bitboard },
+    {2*vertical +   horizontal,                         0, a     },
+    {               horizontal, 2*vertical               , a     },
+    {2*vertical               ,                horizontal, h     },
+    {                        0, 2*vertical +   horizontal, h     },
     {  vertical + 2*horizontal,                         0, a | b },
     {             2*horizontal,   vertical               , a | b },
     {  vertical               ,              2*horizontal, g | h },
@@ -167,17 +169,17 @@ Bitboard moves::knight_attacks(const Bitboard knight, const KnightAttackType& ka
 }
 
 Bitboard moves::bishop_attacks(const Bitboard occupancy, const squares::Index source) {
-  Bitboard piece = squares::partition[source].bitboard;
+  Bitboard piece = squares::bitboard(source);
   return 
-    slides(occupancy, piece, diagonals::partition.parts_by_square_index[source] & ~piece) |
-    slides(occupancy, piece, giadonals::partition.parts_by_square_index[source] & ~piece);
+    slides(occupancy, piece, diagonals::bitboards::by_square(source) & ~piece) |
+    slides(occupancy, piece, giadonals::bitboards::by_square(source) & ~piece);
 }
 
 Bitboard moves::rook_attacks(const Bitboard occupancy, const squares::Index source) {
-  Bitboard piece = squares::partition[source].bitboard;
+  Bitboard piece = squares::bitboard(source);
   return
-    slides     (occupancy, piece, files::partition.parts_by_square_index[source] & ~piece) |
-    slides_rank(occupancy, piece, ranks::partition.parts_by_square_index[source]);
+    slides     (occupancy, piece, files::bitboards::by_square(source) & ~piece) |
+    slides_rank(occupancy, piece, ranks::bitboards::by_square(source));
 }
 
 Bitboard moves::queen_attacks(const Bitboard occupancy, const squares::Index source) {
@@ -185,7 +187,8 @@ Bitboard moves::queen_attacks(const Bitboard occupancy, const squares::Index sou
 }
 
 Bitboard moves::king_attacks(const Bitboard king) {
-  Bitboard leftright = ((king & ~files::a) >> horizontal) | ((king & ~files::h) << horizontal);
+  using namespace files::bitboards;
+  Bitboard leftright = ((king & ~a) >> horizontal) | ((king & ~h) << horizontal);
   Bitboard triple = leftright | king;
   return leftright | (triple << vertical) | (triple >> vertical);
 }
@@ -370,8 +373,8 @@ void moves::moves(std::vector<Move>& moves,
 }
 
 std::ostream& operator<<(std::ostream& o, const Move& m) {
-  o << "Move(" << squares::partition[m.from()].name <<
-       "->" << squares::partition[m.to()].name <<
+  o << "Move(" << squares::keywords[m.from()] <<
+       "->" << squares::keywords[m.to()] <<
        "; " << Move::typename_from_type(m.type()) <<
        ")";
   return o;

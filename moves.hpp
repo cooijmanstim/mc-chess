@@ -44,6 +44,8 @@ public:
   Type type() const;
   squares::Index from() const;
   squares::Index to  () const;
+  squares::Index source() const;
+  squares::Index target() const;
 
   bool is_capture() const;
 
@@ -51,7 +53,7 @@ public:
   bool operator!=(const Move& that) const;
   bool operator< (const Move& that) const; // used for std::set in tests
 
-  bool matches_algebraic(boost::optional<File> source_file, boost::optional<Rank> source_rank, const Square& target, const bool is_capture) const;
+  bool matches_algebraic(boost::optional<files::Index> source_file, boost::optional<ranks::Index> source_rank, const squares::Index target, const bool is_capture) const;
 
   friend std::ostream& operator<<(std::ostream& o, const Move& m);
 };
@@ -83,7 +85,7 @@ namespace moves {
   const std::vector<PawnAttackType>& get_pawn_attack_types();
   const std::vector<KnightAttackType>& get_knight_attack_types();
 
-  Bitboard slides_rank(Bitboard occupancy, Bitboard piece, const Rank rank);
+  Bitboard slides_rank(Bitboard occupancy, Bitboard piece, const ranks::Index rank);
   Bitboard slides(const Bitboard occupancy, const Bitboard piece, const Bitboard mobility);
 
   Bitboard pawn_attacks(const Bitboard pawn, const PawnDingbat& pd, const PawnAttackType& pa);

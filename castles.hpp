@@ -11,7 +11,7 @@ namespace castles {
   const size_t cardinality = sizeof(values) / sizeof(values[0]);
 
   inline const Bitboard& safe_squares(Color color, Castle castle) {
-    using namespace squares;
+    using namespace squares::bitboards;
     using namespace colors;
     static auto safe_squares = [](){
       array2d<Bitboard, colors::cardinality, castles::cardinality> result;
@@ -25,7 +25,7 @@ namespace castles {
   }
 
   inline const Bitboard& free_squares(Color color, Castle castle) {
-    using namespace squares;
+    using namespace squares::bitboards;
     using namespace colors;
     static auto free_squares = [](){
       array2d<Bitboard, colors::cardinality, castles::cardinality> result;
@@ -42,40 +42,40 @@ namespace castles {
     using namespace squares;
     static array2d<Move, colors::cardinality, castles::cardinality> moves = {
       // white
-      Move(e1.index, g1.index, Move::Type::castle_kingside),
-      Move(e1.index, c1.index, Move::Type::castle_queenside),
+      Move(e1, g1, Move::Type::castle_kingside),
+      Move(e1, c1, Move::Type::castle_queenside),
       // black
-      Move(e8.index, g8.index, Move::Type::castle_kingside),
-      Move(e8.index, c8.index, Move::Type::castle_queenside),
+      Move(e8, g8, Move::Type::castle_kingside),
+      Move(e8, c8, Move::Type::castle_queenside),
     };
     return moves[color][castle];
   }
 
-  inline const Square& rook_before(const Move& move) {
+  inline const squares::Index& rook_before(const Move& move) {
     using namespace squares;
     switch (move.to()) {
-    case g1.index: return h1;
-    case c1.index: return a1;
-    case g8.index: return h8;
-    case c8.index: return a8;
+    case g1: return h1;
+    case c1: return a1;
+    case g8: return h8;
+    case c8: return a8;
     default:
       throw std::runtime_error(boost::format("invalid castling move: %1") % move);
     }
   }
 
-  inline const Square& rook_after(const Move& move) {
+  inline const squares::Index& rook_after(const Move& move) {
     using namespace squares;
     switch (move.to()) {
-    case g1.index: return f1;
-    case c1.index: return d1;
-    case g8.index: return f8;
-    case c8.index: return d8;
+    case g1: return f1;
+    case c1: return d1;
+    case g8: return f8;
+    case c8: return d8;
     default:
       throw std::runtime_error(boost::format("invalid castling move: %1") % move);
     }
   }
 
-  inline boost::optional<Castle> involving(const Square& rook_before_square, const Color color) {
+  inline boost::optional<Castle> involving(const squares::Index& rook_before_square, const Color color) {
     switch (color) {
     case white:
       switch (rook_before_square) {
