@@ -301,7 +301,7 @@ void moves::bishop(std::vector<Move>& moves,
                    const Bitboard en_passant_square) {
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
-  bitboard::for_each_member(bishop, [&moves, &us, &them, &occupancy, &flat_occupancy](const squares::Index source) {
+  bitboard::for_each_member(bishop, [&moves, &us, &them, &occupancy, &flat_occupancy](squares::Index source) {
       moves_from_attacks(moves, bishop_attacks(flat_occupancy, source), occupancy[us], occupancy[them], source, absolute);
     });
 }
