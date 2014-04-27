@@ -106,11 +106,11 @@ namespace moves {
   void castle(std::vector<Move>& moves, const Color us, const Color them,
               const Occupancy& occupancy,
               const Bitboard their_attacks,
-              const bool can_castle_kingside, const bool can_castle_queenside);
+              const CastlingRights& castling_rights);
 
   void moves(std::vector<Move>& moves, const Color us, const Color them,
              const Board& board, const Occupancy& occupancy,
              const Bitboard their_attacks,
              const Bitboard en_passant_square,
-             const bool can_castle_kingside, const bool can_castle_queenside);
+             const CastlingRights& castling_rights);
 }
