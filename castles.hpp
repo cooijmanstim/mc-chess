@@ -13,46 +13,40 @@ namespace castles {
   inline const Bitboard& safe_squares(Color color, Castle castle) {
     using namespace squares;
     using namespace colors;
-    static array2d<Bitboard, colors::cardinality, castles::cardinality> safe_squares = {
-      [white] = {
-        [kingside]  = e1 | f1 | g1,
-        [queenside] = e1 | d1 | c1,
-      },
-      [black] = {
-        [kingside]  = e8 | f8 | g8,
-        [queenside] = e8 | d8 | c8,
-      },
-    };
+    static auto safe_squares = [](){
+      array2d<Bitboard, colors::cardinality, castles::cardinality> result;
+      result[white][kingside]  = e1 | f1 | g1;
+      result[white][queenside] = e1 | d1 | c1;
+      result[black][kingside]  = e8 | f8 | g8;
+      result[black][queenside] = e8 | d8 | c8;
+      return result;
+    }();
     return safe_squares[color][castle];
   }
 
   inline const Bitboard& free_squares(Color color, Castle castle) {
     using namespace squares;
     using namespace colors;
-    static array2d<Bitboard, colors::cardinality, castles::cardinality> free_squares = {
-      [white] = {
-        [kingside]  = f1 | g1,
-        [queenside] = d1 | c1 | b1,
-      },
-      [black] = {
-        [kingside]  = f8 | g8,
-        [queenside] = d8 | c8 | b8,
-      },
-    };
+    static auto free_squares = [](){
+      array2d<Bitboard, colors::cardinality, castles::cardinality> result;
+      result[white][kingside]  = f1 | g1;
+      result[white][queenside] = d1 | c1 | b1;
+      result[black][kingside]  = f8 | g8;
+      result[black][queenside] = d8 | c8 | b8;
+      return result;
+    }();
     return free_squares[color][castle];
   }
 
   inline Move move(Color color, Castle castle) {
     using namespace squares;
-    static array2d<Bitboard, colors::cardinality, castles::cardinality> moves = {
-      [white] = {
-        [kingside]  = Move(e1.index, g1.index, Move::Type::castle_kingside),
-        [queenside] = Move(e1.index, c1.index, Move::Type::castle_queenside),
-      },
-      [black] = {
-        [kingside]  = Move(e8.index, g8.index, Move::Type::castle_kingside),
-        [queenside] = Move(e8.index, c8.index, Move::Type::castle_queenside),
-      },
+    static array2d<Move, colors::cardinality, castles::cardinality> moves = {
+      // white
+      Move(e1.index, g1.index, Move::Type::castle_kingside),
+      Move(e1.index, c1.index, Move::Type::castle_queenside),
+      // black
+      Move(e8.index, g8.index, Move::Type::castle_kingside),
+      Move(e8.index, c8.index, Move::Type::castle_queenside),
     };
     return moves[color][castle];
   }
@@ -99,16 +93,14 @@ namespace castles {
   }
 
   inline char symbol(Color color, Castle castle) {
-    static array2d<char, colors::cardinality, castles::cardinality> symbols = {
-      [white] = {
-        [kingside]  = 'K',
-        [queenside] = 'Q',
-      },
-      [black] = {
-        [kingside]  = 'k',
-        [queenside] = 'q',
-      },
-    };
+    static auto symbols = []() {
+      array2d<char, colors::cardinality, castles::cardinality> result;
+      result[white][kingside]  = 'K';
+      result[white][queenside] = 'Q';
+      result[black][kingside]  = 'k';
+      result[black][queenside] = 'q';
+      return result;
+    }();
     return symbols[color][castle];
   }
 }
