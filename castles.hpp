@@ -1,7 +1,8 @@
+#pragma once
+
 #include "colors.hpp"
 #include "bitboard.hpp"
 #include "partitions.hpp"
-#include "moves.hpp"
 
 namespace castles {
 #define CASTLES kingside, queenside
@@ -38,61 +39,80 @@ namespace castles {
     return free_squares[color][castle];
   }
 
-  inline Move move(Color color, Castle castle) {
+  inline squares::Index king_before(const Color color, const Castle castle) {
     using namespace squares;
-    static array2d<Move, colors::cardinality, castles::cardinality> moves = {
-      // white
-      Move(e1, g1, Move::Type::castle_kingside),
-      Move(e1, c1, Move::Type::castle_queenside),
-      // black
-      Move(e8, g8, Move::Type::castle_kingside),
-      Move(e8, c8, Move::Type::castle_queenside),
-    };
-    return moves[color][castle];
+    using namespace colors;
+    static auto king_befores = [](){
+      array2d<squares::Index, colors::cardinality, castles::cardinality> result;
+      result[white][kingside]  = e1;
+      result[white][queenside] = e1;
+      result[black][kingside]  = e8;
+      result[black][queenside] = e8;
+      return result;
+    }();
+    return king_befores[color][castle];
   }
 
-  inline const squares::Index& rook_before(const Move& move) {
+  inline squares::Index king_after(const Color color, const Castle castle) {
     using namespace squares;
-    switch (move.to()) {
-    case g1: return h1;
-    case c1: return a1;
-    case g8: return h8;
-    case c8: return a8;
-    default:
-      throw std::runtime_error(boost::format("invalid castling move: %1") % move);
-    }
+    using namespace colors;
+    static auto king_afters = [](){
+      array2d<squares::Index, colors::cardinality, castles::cardinality> result;
+      result[white][kingside]  = g1;
+      result[white][queenside] = c1;
+      result[black][kingside]  = g8;
+      result[black][queenside] = c8;
+      return result;
+    }();
+    return king_afters[color][castle];
   }
 
-  inline const squares::Index& rook_after(const Move& move) {
+  inline squares::Index rook_after(const squares::Index king_after) {
     using namespace squares;
-    switch (move.to()) {
+    switch (king_after) {
     case g1: return f1;
     case c1: return d1;
     case g8: return f8;
     case c8: return d8;
     default:
-      throw std::runtime_error(boost::format("invalid castling move: %1") % move);
+      throw std::runtime_error(str(boost::format("invalid castling king target: %1%") % king_before));
+    }
+  }
+
+  inline squares::Index rook_before(const squares::Index king_after) {
+    using namespace squares;
+    switch (king_after) {
+    case g1: return h1;
+    case c1: return a1;
+    case g8: return h8;
+    case c8: return a8;
+    default:
+      throw std::runtime_error(str(boost::format("invalid castling king target: %1%") % king_after));
     }
   }
 
   inline boost::optional<Castle> involving(const squares::Index& rook_before_square, const Color color) {
+    using namespace squares;
+    using namespace colors;
     switch (color) {
     case white:
       switch (rook_before_square) {
       case h1: return kingside;
       case a1: return queenside;
+      default: return boost::none;
       }
-      return boost::none;
     case black:
       switch (rook_before_square) {
       case h8: return kingside;
       case a8: return queenside;
+      default: return boost::none;
       }
-      return boost::none;
     }
   }
 
   inline char symbol(Color color, Castle castle) {
+    using namespace squares;
+    using namespace colors;
     static auto symbols = []() {
       array2d<char, colors::cardinality, castles::cardinality> result;
       result[white][kingside]  = 'K';
@@ -105,4 +125,5 @@ namespace castles {
   }
 }
 
+typedef castles::Castle Castle;
 typedef array2d<bool, colors::cardinality, castles::cardinality> CastlingRights;

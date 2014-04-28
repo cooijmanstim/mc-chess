@@ -1,5 +1,8 @@
 #pragma once
 
+#include "bitboard.hpp"
+#include "direction.hpp"
+
 namespace squares {
 #define PARTITION_NAMESPACE squares
 #define PARTITION_CARDINALITY 64
@@ -12,18 +15,25 @@ namespace squares {
   _(a6) _(b6) _(c6) _(d6) _(e6) _(f6) _(g6) _(h6) \
   _(a7) _(b7) _(c7) _(d7) _(e7) _(f7) _(g7) _(h7) \
   _(a8) _(b8) _(c8) _(d8) _(e8) _(f8) _(g8) _(h8)
-#define PARTITION_BITBOARD(i) (Bitboard(i) << (i));
+#define PARTITION_BITBOARD(i) (Bitboard(1) << (i));
 
-  inline const Index& index(Bitboard b) {
+#include "partition_template.hpp"
+
+  inline Index index(Bitboard b) {
     assert(bitboard::cardinality(b) == 1);
     return static_cast<Index>(bitboard::scan_forward(b));
   }
-#include "partition_template.hpp"
+
+  inline void do_bits(Bitboard b, std::function<void(squares::Index)> f) {
+    bitboard::for_each_member(b, [&f](size_t index) {
+        f(static_cast<squares::Index>(index));
+      });
+  }
 }
 
 // the partitions below all need to have this procedure to look up a part by square index
-#define BY_SQUARE \
-  inline const Index by_square(squares::Index si) { \
+#define BY_SQUARE(spacename) \
+  inline Index by_square(squares::Index si) { \
     static auto by_square = [](){ \
       std::array<Index, squares::cardinality> by_square; \
       for (squares::Index si: squares::indices) { \
@@ -35,15 +45,21 @@ namespace squares {
       return by_square; \
     }(); \
     return by_square[si]; \
+  } \
+  \
+  namespace bitboards { \
+    inline Bitboard by_square(squares::Index si) { \
+      return bitboard(spacename::by_square(si)); \
+    } \
   }
 
 namespace files {
 #define PARTITION_NAMESPACE files
 #define PARTITION_CARDINALITY 8
 #define PARTITION_KEYWORDS _(a) _(b) _(c) _(d) _(e) _(f) _(g) _(h)
-#define PARTITION_BITBOARD(i) (Bitboard(0x0101010101010101) << index*directions::horizontal)
+#define PARTITION_BITBOARD(i) (Bitboard(0x0101010101010101) << i*directions::horizontal)
 #include "partition_template.hpp"
-BY_SQUARE
+BY_SQUARE(files)
 }
 
 namespace ranks {
@@ -52,7 +68,7 @@ namespace ranks {
 #define PARTITION_KEYWORDS _(_1) _(_2) _(_3) _(_4) _(_5) _(_6) _(_7) _(_8)
 #define PARTITION_BITBOARD(i) (Bitboard(0x00000000000000FF) << i*directions::vertical)
 #include "partition_template.hpp"
-BY_SQUARE
+BY_SQUARE(ranks)
 }
 
 namespace diagonals {
@@ -63,9 +79,9 @@ namespace diagonals {
   Bitboard maindiagonal = Bitboard(0x0102040810204080); \
   int shiftcount = (7 - i)*directions::vertical; \
   return shiftcount >= 0 ? maindiagonal >> shiftcount : maindiagonal << -shiftcount; \
-})
+})()
 #include "partition_template.hpp"
-BY_SQUARE
+BY_SQUARE(diagonals)
 }
 
 namespace giadonals {
@@ -76,7 +92,7 @@ namespace giadonals {
   Bitboard maingiadonal = Bitboard(0x8040201008040201); \
   int shiftcount = (7 - i)*directions::vertical; \
   return shiftcount >= 0 ? maingiadonal << shiftcount : maingiadonal >> -shiftcount; \
-})
+})()
 #include "partition_template.hpp"
-BY_SQUARE
+BY_SQUARE(giadonals)
 }

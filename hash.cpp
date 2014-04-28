@@ -26,7 +26,7 @@ Hash hashes::colored_piece_at_square(const Color color, const Piece piece, const
 
 Hash hashes::can_castle(const Color color, const Castle castle) {
   static auto x = []() {
-    array2d<Hash, colors::cardinality, Castle::Type::cardinality> x;
+    array2d<Hash, colors::cardinality, castles::cardinality> x;
     for (Color color: colors::values)
       for (Castle castle: castles::values)
         x[color][castle] = generate_random_feature();

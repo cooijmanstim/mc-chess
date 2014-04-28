@@ -13,24 +13,28 @@
   enum Index {
     PARTITION_KEYWORDS
   };
-  std::array<Index, cardinality> indices = {
+  const std::array<Index, cardinality> indices = {
     PARTITION_KEYWORDS
   };
 #undef _
 
 #define _(key) #key,
-  std::array<std::string, cardinality> keywords = {
+  const std::array<std::string, cardinality> keywords = {
     PARTITION_KEYWORDS
   };
 #undef _
 
 #define _(key) { #key, key },
-  std::map<std::string, Index> by_keyword = {
+  const std::map<std::string, Index> _by_keyword = {
     PARTITION_KEYWORDS
   };
 #undef _
 
-  inline const Bitboard& bitboard(Index i) {
+  inline Index by_keyword(std::string keyword) {
+    return _by_keyword.at(keyword);
+  }
+
+  inline Bitboard bitboard(Index i) {
     static auto bitboards = [](){
       std::array<Bitboard, cardinality> bitboards;
       for (Index i: indices)
@@ -41,9 +45,8 @@
   }
 
   namespace bitboards {
-    Bitboard
-#define _(key) key = bitboard(PARTITION_NAMESPACE::key),
-      KEYWORDS;
+#define _(key) const Bitboard key = bitboard(PARTITION_NAMESPACE::key);
+      PARTITION_KEYWORDS
 #undef _
   }
 

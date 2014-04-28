@@ -6,8 +6,9 @@
 
 #include "bitboard.hpp"
 #include "partitions.hpp"
-#include "board.hpp"
 #include "pieces.hpp"
+#include "board.hpp"
+#include "castles.hpp"
 
 class Move {
   typedef uint16_t Word;
@@ -36,7 +37,8 @@ public:
 
   static std::string typename_from_type(Type type);
 
-  Move(const squares::Index from, const squares::Index to, const Type type);
+  Move();
+  Move(const int from, const int to, const Type type);
   Move(const Move& that);
 
   Move& operator=(const Move& that);
@@ -54,6 +56,8 @@ public:
   bool operator< (const Move& that) const; // used for std::set in tests
 
   bool matches_algebraic(boost::optional<files::Index> source_file, boost::optional<ranks::Index> source_rank, const squares::Index target, const bool is_capture) const;
+
+  static Move castle(Color color, Castle castle);
 
   friend std::ostream& operator<<(std::ostream& o, const Move& m);
 };

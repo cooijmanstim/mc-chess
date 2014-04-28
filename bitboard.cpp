@@ -28,5 +28,5 @@ Bitboard bitboard::flip_vertically(Bitboard b) {
 }
 
 size_t bitboard::cardinality(Bitboard b) {
-  return __builtin_popcount(b) == 1;
+  return __builtin_popcountll(b);
 }
