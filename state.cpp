@@ -270,7 +270,7 @@ Move State::parse_algebraic(std::string algebraic) const {
     squares::Index target = squares::by_keyword(std::string(m[5].first, m[5].second));
 
     predicate = [this, piece, source_file, source_rank, is_capture, target](const Move& move) {
-      if (!(board[us][piece] & squares::bitboard(move.from())))
+      if (!(board[us][piece] & squares::bitboard(move.source())))
         return false;
       if (!move.matches_algebraic(source_file, source_rank, target, is_capture))
         return false;
@@ -311,7 +311,7 @@ void State::make_moves(std::vector<std::string> algebraic_moves) {
 }
 
 Piece State::moving_piece(const Move& move, const Halfboard& us) const {
-  const Bitboard source = squares::bitboard(move.from());
+  const Bitboard source = squares::bitboard(move.source());
   for (Piece piece: pieces::values) {
     if (us[piece] & source)
       return piece;
@@ -438,8 +438,8 @@ void State::make_move_on_our_halfboard(const Move& move, const Piece piece, cons
   case Move::Type::castle_kingside:
   case Move::Type::castle_queenside:
     {
-      squares::Index rook0 = castles::rook_before(move.to());
-      squares::Index rook1 = castles::rook_after(move.to());
+      squares::Index rook0 = castles::rook_source(move.target());
+      squares::Index rook1 = castles::rook_target(move.target());
       our_halfboard[rook] &= ~squares::bitboard(rook0); toggle(hash, us, rook, rook0);
       our_halfboard[rook] |=  squares::bitboard(rook1); toggle(hash, us, rook, rook1);
     }
@@ -496,8 +496,8 @@ void State::make_move_on_occupancy(const Move& move, const Piece piece, const Bi
     break;
   case Move::Type::castle_kingside:
   case Move::Type::castle_queenside:
-    occupancy[us] &= ~squares::bitboard(castles::rook_before(move.to()));
-    occupancy[us] |=  squares::bitboard(castles::rook_after(move.to()));
+    occupancy[us] &= ~squares::bitboard(castles::rook_source(move.target()));
+    occupancy[us] |=  squares::bitboard(castles::rook_target(move.target()));
     break;
   case Move::Type::double_push:
   case Move::Type::promotion_knight:

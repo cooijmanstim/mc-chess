@@ -14,8 +14,8 @@ class Move {
   typedef uint16_t Word;
 
   Word move;
-  static const size_t nbits_type = 4, nbits_from = 6, nbits_to = 6;
-  static const size_t offset_type = 0, offset_from = offset_type + nbits_type, offset_to = offset_from + nbits_from;
+  static const size_t nbits_type = 4, nbits_source = 6, nbits_target = 6;
+  static const size_t offset_type = 0, offset_source = offset_type + nbits_type, offset_target = offset_source + nbits_source;
 
 public:
   // NOTE: at most 16!
@@ -38,14 +38,12 @@ public:
   static std::string typename_from_type(Type type);
 
   Move();
-  Move(const int from, const int to, const Type type);
+  Move(const int source, const int target, const Type type);
   Move(const Move& that);
 
   Move& operator=(const Move& that);
 
   Type type() const;
-  squares::Index from() const;
-  squares::Index to  () const;
   squares::Index source() const;
   squares::Index target() const;
 

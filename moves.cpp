@@ -31,10 +31,10 @@ std::string Move::typename_from_type(Type type) {
 Move::Move() : move(0) {
 }
 
-Move::Move(const int from, const int to, const Type type) {
-  assert(0 <= from && (size_t)from < squares::cardinality);
-  assert(0 <= to   && (size_t)to   < squares::cardinality);
-  move = ((Word)type << offset_type) | (from << offset_from) | (to << offset_to);
+Move::Move(const int source, const int target, const Type type) {
+  assert(0 <= source && (size_t)source < squares::cardinality);
+  assert(0 <= target && (size_t)target < squares::cardinality);
+  move = ((Word)type << offset_type) | (source << offset_source) | (target << offset_target);
 }
 
 Move::Move(const Move& that) :
@@ -48,10 +48,8 @@ Move& Move::operator=(const Move& that) {
 }
 
 Move::Type Move::type() const { return static_cast<Move::Type>((move >> offset_type) & ((1 << nbits_type) - 1)); }
-squares::Index Move::from  () const { return static_cast<squares::Index>((move >> offset_from) & ((1 << nbits_from) - 1)); }
-squares::Index Move::to    () const { return static_cast<squares::Index>((move >> offset_to)   & ((1 << nbits_to)   - 1)); }
-squares::Index Move::source() const { return static_cast<squares::Index>((move >> offset_from) & ((1 << nbits_from) - 1)); }
-squares::Index Move::target() const { return static_cast<squares::Index>((move >> offset_to)   & ((1 << nbits_to)   - 1)); }
+squares::Index Move::source() const { return static_cast<squares::Index>((move >> offset_source) & ((1 << nbits_source) - 1)); }
+squares::Index Move::target() const { return static_cast<squares::Index>((move >> offset_target)   & ((1 << nbits_target)   - 1)); }
 
 bool Move::is_capture() const {
   switch (type()) {
@@ -75,7 +73,7 @@ Move Move::castle(Color color, Castle castle) {
     array2d<Move, colors::cardinality, castles::cardinality> result;
     for (Color color: colors::values) {
       for (Castle castle: castles::values) {
-        result[color][castle] = Move(king_before(color, castle), king_after(color, castle),
+        result[color][castle] = Move(king_source(color, castle), king_target(color, castle),
                                      castle == castles::kingside ? Type::castle_kingside : Type::castle_queenside);
       }
     }
@@ -89,13 +87,13 @@ bool Move::matches_algebraic(boost::optional<files::Index> source_file,
                              boost::optional<ranks::Index> source_rank,
                              const squares::Index target,
                              const bool is_capture) const {
-  if (source_file && *source_file != files::by_square(from()))
+  if (source_file && *source_file != files::by_square(source()))
     return false;
-  if (source_rank && *source_rank != ranks::by_square(from()))
+  if (source_rank && *source_rank != ranks::by_square(source()))
     return false;
   if (is_capture && !this->is_capture())
     return false;
-  if (to() != target)
+  if (target != this->target())
     return false;
   return true;
 }
@@ -392,8 +390,8 @@ void moves::moves(std::vector<Move>& moves,
 }
 
 std::ostream& operator<<(std::ostream& o, const Move& m) {
-  o << "Move(" << squares::keywords[m.from()] <<
-       "->" << squares::keywords[m.to()] <<
+  o << "Move(" << squares::keywords[m.source()] <<
+       "->" << squares::keywords[m.target()] <<
        "; " << Move::typename_from_type(m.type()) <<
        ")";
   return o;

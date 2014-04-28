@@ -39,10 +39,10 @@ namespace castles {
     return free_squares[color][castle];
   }
 
-  inline squares::Index king_before(const Color color, const Castle castle) {
+  inline squares::Index king_source(const Color color, const Castle castle) {
     using namespace squares;
     using namespace colors;
-    static auto king_befores = [](){
+    static auto king_sources = [](){
       array2d<squares::Index, colors::cardinality, castles::cardinality> result;
       result[white][kingside]  = e1;
       result[white][queenside] = e1;
@@ -50,13 +50,13 @@ namespace castles {
       result[black][queenside] = e8;
       return result;
     }();
-    return king_befores[color][castle];
+    return king_sources[color][castle];
   }
 
-  inline squares::Index king_after(const Color color, const Castle castle) {
+  inline squares::Index king_target(const Color color, const Castle castle) {
     using namespace squares;
     using namespace colors;
-    static auto king_afters = [](){
+    static auto king_targets = [](){
       array2d<squares::Index, colors::cardinality, castles::cardinality> result;
       result[white][kingside]  = g1;
       result[white][queenside] = c1;
@@ -64,45 +64,45 @@ namespace castles {
       result[black][queenside] = c8;
       return result;
     }();
-    return king_afters[color][castle];
+    return king_targets[color][castle];
   }
 
-  inline squares::Index rook_after(const squares::Index king_after) {
+  inline squares::Index rook_target(const squares::Index king_target) {
     using namespace squares;
-    switch (king_after) {
+    switch (king_target) {
     case g1: return f1;
     case c1: return d1;
     case g8: return f8;
     case c8: return d8;
     default:
-      throw std::runtime_error(str(boost::format("invalid castling king target: %1%") % king_before));
+      throw std::runtime_error(str(boost::format("invalid castling king target: %1%") % king_source));
     }
   }
 
-  inline squares::Index rook_before(const squares::Index king_after) {
+  inline squares::Index rook_source(const squares::Index king_target) {
     using namespace squares;
-    switch (king_after) {
+    switch (king_target) {
     case g1: return h1;
     case c1: return a1;
     case g8: return h8;
     case c8: return a8;
     default:
-      throw std::runtime_error(str(boost::format("invalid castling king target: %1%") % king_after));
+      throw std::runtime_error(str(boost::format("invalid castling king target: %1%") % king_target));
     }
   }
 
-  inline boost::optional<Castle> involving(const squares::Index& rook_before_square, const Color color) {
+  inline boost::optional<Castle> involving(const squares::Index& rook_source, const Color color) {
     using namespace squares;
     using namespace colors;
     switch (color) {
     case white:
-      switch (rook_before_square) {
+      switch (rook_source) {
       case h1: return kingside;
       case a1: return queenside;
       default: return boost::none;
       }
     case black:
-      switch (rook_before_square) {
+      switch (rook_source) {
       case h8: return kingside;
       case a8: return queenside;
       default: return boost::none;
