@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "bitboard.hpp"
 #include "direction.hpp"
 

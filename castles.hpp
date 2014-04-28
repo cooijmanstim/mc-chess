@@ -1,5 +1,8 @@
 #pragma once
 
+#include <boost/format.hpp>
+
+#include "util.hpp"
 #include "colors.hpp"
 #include "bitboard.hpp"
 #include "partitions.hpp"

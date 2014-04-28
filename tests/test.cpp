@@ -10,7 +10,7 @@
 #include "util.hpp"
 #include "direction.hpp"
 #include "state.hpp"
-#include "moves.hpp"
+#include "move_generation.hpp"
 #include "hash.hpp"
 
 // NOTE: evaluates arguments twice

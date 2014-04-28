@@ -8,7 +8,7 @@
 #include "pieces.hpp"
 #include "board.hpp"
 #include "bitboard.hpp"
-#include "moves.hpp"
+#include "move_generation.hpp"
 #include "hash.hpp"
 
 class State {
