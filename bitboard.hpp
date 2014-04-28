@@ -1,16 +1,40 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <functional>
 
+#include "bitboard.hpp"
+
 typedef uint64_t Bitboard;
 
-// the size_t's here are actually squares::Index, but that would make things circular
 namespace bitboard {
-  size_t scan_forward(Bitboard b);
-  size_t scan_forward_with_reset(Bitboard& b);
-  bool is_empty(Bitboard b);
-  void for_each_member(Bitboard b, std::function<void(size_t)> f);
-  Bitboard flip_vertically(Bitboard b);
-  size_t cardinality(Bitboard b);
+  inline size_t scan_forward(const Bitboard b) {
+    assert(b != 0);
+    return __builtin_ffsll(b) - 1;
+  }
+
+  inline size_t scan_forward_with_reset(Bitboard& b) {
+    size_t index = scan_forward(b);
+    b &= b - 1;
+    return index;
+  }
+
+  inline bool is_empty(const Bitboard b) {
+    return b == 0;
+  }
+
+  inline void for_each_member(Bitboard b, const std::function<void(size_t)> f) {
+    while (!is_empty(b)) {
+      f(scan_forward_with_reset(b));
+    }
+  }
+
+  inline Bitboard flip_vertically(const Bitboard b) {
+    return __builtin_bswap64(b);
+  }
+
+  inline size_t cardinality(const Bitboard b) {
+    return __builtin_popcountll(b);
+  }
 }
