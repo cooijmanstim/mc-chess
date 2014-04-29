@@ -8,6 +8,7 @@
 #include "colors.hpp"
 #include "partitions.hpp"
 #include "castles.hpp"
+#include "move_types.hpp"
 
 class Move {
   typedef uint16_t Word;
@@ -17,32 +18,14 @@ class Move {
   static const size_t offset_type = 0, offset_source = offset_type + nbits_type, offset_target = offset_source + nbits_source;
 
 public:
-  // NOTE: at most 16!
-  enum class Type {
-    normal,
-    double_push,
-    castle_kingside,
-    castle_queenside,
-    capture,
-    promotion_knight,
-    promotion_bishop,
-    promotion_rook,
-    promotion_queen,
-    capturing_promotion_knight,
-    capturing_promotion_bishop,
-    capturing_promotion_rook,
-    capturing_promotion_queen,
-  };
-
-  static std::string typename_from_type(Type type);
 
   Move();
-  Move(const int source, const int target, const Type type);
+  Move(const int source, const int target, const MoveType type);
   Move(const Move& that);
 
   Move& operator=(const Move& that);
 
-  Type type() const;
+  MoveType type() const;
   squares::Index source() const;
   squares::Index target() const;
 

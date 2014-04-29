@@ -349,7 +349,7 @@ void State::update_castling_rights(const Move& move, const Piece piece, const Bi
   case pieces::queen:
     break;
   default:
-    throw std::runtime_error("unhandled piece");
+    throw std::runtime_error(str(boost::format("unhandled Piece case: %|1$#x|") % piece));
   }
 }
 
@@ -360,24 +360,24 @@ void State::update_en_passant_square(const Move& move, const Piece piece, const 
     hash ^= hashes::en_passant(en_passant_square);
 
   switch (move.type()) {
-  case Move::Type::double_push:
+  case move_types::double_push:
     assert(piece == pieces::pawn);
     en_passant_square = us == colors::white ? target >> directions::vertical
                                             : target << directions::vertical;
     hash ^= hashes::en_passant(en_passant_square);
     break;
-  case Move::Type::capture:
-  case Move::Type::castle_kingside:
-  case Move::Type::castle_queenside:
-  case Move::Type::promotion_knight:
-  case Move::Type::promotion_bishop:
-  case Move::Type::promotion_rook:
-  case Move::Type::promotion_queen:
-  case Move::Type::normal:
+  case move_types::capture:
+  case move_types::castle_kingside:
+  case move_types::castle_queenside:
+  case move_types::promotion_knight:
+  case move_types::promotion_bishop:
+  case move_types::promotion_rook:
+  case move_types::promotion_queen:
+  case move_types::normal:
     en_passant_square = 0;
     break;
   default:
-    throw std::runtime_error("unhandled Move::Type case");
+    throw std::runtime_error(str(boost::format("unhandled MoveType case: %|1$#x|") % move.type()));
   }
 }
 
@@ -387,11 +387,11 @@ void State::make_move_on_their_halfboard(const Move& move, const Piece piece, co
   using hashes::toggle;
 
   switch (move.type()) {
-  case Move::Type::capturing_promotion_knight:
-  case Move::Type::capturing_promotion_bishop:
-  case Move::Type::capturing_promotion_rook:
-  case Move::Type::capturing_promotion_queen:
-  case Move::Type::capture:
+  case move_types::capturing_promotion_knight:
+  case move_types::capturing_promotion_bishop:
+  case move_types::capturing_promotion_rook:
+  case move_types::capturing_promotion_queen:
+  case move_types::capture:
     if (target == en_passant_square) {
       assert(piece == pieces::pawn);
       // the captured pawn is in front of the en_passant_square
@@ -411,17 +411,17 @@ void State::make_move_on_their_halfboard(const Move& move, const Piece piece, co
       }
     }
     break;
-  case Move::Type::double_push:
-  case Move::Type::castle_kingside:
-  case Move::Type::castle_queenside:
-  case Move::Type::promotion_knight:
-  case Move::Type::promotion_bishop:
-  case Move::Type::promotion_rook:
-  case Move::Type::promotion_queen:
-  case Move::Type::normal:
+  case move_types::double_push:
+  case move_types::castle_kingside:
+  case move_types::castle_queenside:
+  case move_types::promotion_knight:
+  case move_types::promotion_bishop:
+  case move_types::promotion_rook:
+  case move_types::promotion_queen:
+  case move_types::normal:
     break;
   default:
-    throw std::runtime_error("unhandled Move::Type case");
+    throw std::runtime_error(str(boost::format("unhandled MoveType case: %|1$#x|") % move.type()));
   }
 }
 
@@ -435,8 +435,8 @@ void State::make_move_on_our_halfboard(const Move& move, const Piece piece, cons
   our_halfboard[piece] |=  target; toggle(hash, us, piece, move.target());
 
   switch (move.type()) {
-  case Move::Type::castle_kingside:
-  case Move::Type::castle_queenside:
+  case move_types::castle_kingside:
+  case move_types::castle_queenside:
     {
       squares::Index rook0 = castles::rook_source(move.target());
       squares::Index rook1 = castles::rook_target(move.target());
@@ -444,36 +444,36 @@ void State::make_move_on_our_halfboard(const Move& move, const Piece piece, cons
       our_halfboard[rook] |=  squares::bitboard(rook1); toggle(hash, us, rook, rook1);
     }
     break;
-  case Move::Type::capturing_promotion_knight:
-  case Move::Type::promotion_knight:
+  case move_types::capturing_promotion_knight:
+  case move_types::promotion_knight:
     assert(piece == pawn);
     our_halfboard[piece]  &= ~target; toggle(hash, us, pawn,   move.target());
     our_halfboard[knight] |=  target; toggle(hash, us, knight, move.target());
     break;
-  case Move::Type::capturing_promotion_bishop:
-  case Move::Type::promotion_bishop:
+  case move_types::capturing_promotion_bishop:
+  case move_types::promotion_bishop:
     assert(piece == pawn);
     our_halfboard[piece]  &= ~target; toggle(hash, us, pawn,   move.target());
     our_halfboard[bishop] |=  target; toggle(hash, us, bishop, move.target());
     break;
-  case Move::Type::capturing_promotion_rook:
-  case Move::Type::promotion_rook:
+  case move_types::capturing_promotion_rook:
+  case move_types::promotion_rook:
     assert(piece == pawn);
     our_halfboard[piece] &= ~target; toggle(hash, us, pawn,  move.target());
     our_halfboard[rook]  |=  target; toggle(hash, us, rook,  move.target());
     break;
-  case Move::Type::capturing_promotion_queen:
-  case Move::Type::promotion_queen:
+  case move_types::capturing_promotion_queen:
+  case move_types::promotion_queen:
     assert(piece == pawn);
     our_halfboard[piece] &= ~target; toggle(hash, us, pawn,  move.target());
     our_halfboard[queen] |=  target; toggle(hash, us, queen, move.target());
     break;
-  case Move::Type::capture:
-  case Move::Type::double_push:
-  case Move::Type::normal:
+  case move_types::capture:
+  case move_types::double_push:
+  case move_types::normal:
     break;
   default:
-    throw std::runtime_error("unhandled Move::Type case");
+    throw std::runtime_error(str(boost::format("unhandled MoveType case: %|1$#x|") % move.type()));
   }
 }
 
@@ -484,30 +484,30 @@ void State::make_move_on_occupancy(const Move& move, const Piece piece, const Bi
   occupancy[us] |=  target;
 
   switch (move.type()) {
-  case Move::Type::capturing_promotion_knight:
-  case Move::Type::capturing_promotion_bishop:
-  case Move::Type::capturing_promotion_rook:
-  case Move::Type::capturing_promotion_queen:
-  case Move::Type::capture:
+  case move_types::capturing_promotion_knight:
+  case move_types::capturing_promotion_bishop:
+  case move_types::capturing_promotion_rook:
+  case move_types::capturing_promotion_queen:
+  case move_types::capture:
     if (target == en_passant_square)
       occupancy[them] &= ~(target >> directions::vertical);
     else
       occupancy[them] &= ~target;
     break;
-  case Move::Type::castle_kingside:
-  case Move::Type::castle_queenside:
+  case move_types::castle_kingside:
+  case move_types::castle_queenside:
     occupancy[us] &= ~squares::bitboard(castles::rook_source(move.target()));
     occupancy[us] |=  squares::bitboard(castles::rook_target(move.target()));
     break;
-  case Move::Type::double_push:
-  case Move::Type::promotion_knight:
-  case Move::Type::promotion_bishop:
-  case Move::Type::promotion_rook:
-  case Move::Type::promotion_queen:
-  case Move::Type::normal:
+  case move_types::double_push:
+  case move_types::promotion_knight:
+  case move_types::promotion_bishop:
+  case move_types::promotion_rook:
+  case move_types::promotion_queen:
+  case move_types::normal:
     break;
   default:
-    throw std::runtime_error("unhandled Move::Type case");
+    throw std::runtime_error(str(boost::format("unhandled MoveType case: %|1$#x|") % move.type()));
   }
 }
 

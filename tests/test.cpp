@@ -43,12 +43,12 @@ BOOST_AUTO_TEST_CASE(initial_moves) {
   std::set<Move> expected_moves;
   using namespace directions;
   squares::do_bits(ranks::bitboards::_2, [&expected_moves](squares::Index from) {
-      expected_moves.emplace(from, from +   north, Move::Type::normal);
-      expected_moves.emplace(from, from + 2*north, Move::Type::double_push);
+      expected_moves.emplace(from, from +   north, move_types::normal);
+      expected_moves.emplace(from, from + 2*north, move_types::double_push);
     });
   squares::do_bits(squares::bitboards::b1 | squares::bitboards::g1, [&expected_moves](squares::Index from) {
-      expected_moves.emplace(from, from + 2*north + west, Move::Type::normal);
-      expected_moves.emplace(from, from + 2*north + east, Move::Type::normal);
+      expected_moves.emplace(from, from + 2*north + west, move_types::normal);
+      expected_moves.emplace(from, from + 2*north + east, move_types::normal);
     });
 
   const std::vector<Move> moves = state.moves();
@@ -140,42 +140,42 @@ BOOST_AUTO_TEST_CASE(various_moves) {
     using namespace squares;
     // a1 rook
     for (squares::Index target: {b1, c1, d1})
-      expected_moves.emplace(Move(a1, target, Move::Type::normal));
+      expected_moves.emplace(Move(a1, target, move_types::normal));
   
     // e1 king
     for (squares::Index target: {d1, f1, d2, f2})
-      expected_moves.emplace(Move(e1, target, Move::Type::normal));
-    expected_moves.emplace(Move(e1, c1, Move::Type::castle_queenside));
+      expected_moves.emplace(Move(e1, target, move_types::normal));
+    expected_moves.emplace(Move(e1, c1, move_types::castle_queenside));
   
     // a2 pawn
-    expected_moves.emplace(Move(a2, a3, Move::Type::normal));
-    expected_moves.emplace(Move(a2, a4, Move::Type::double_push));
+    expected_moves.emplace(Move(a2, a3, move_types::normal));
+    expected_moves.emplace(Move(a2, a4, move_types::double_push));
   
     // b2 pawn
-    expected_moves.emplace(Move(b2, b3, Move::Type::normal));
+    expected_moves.emplace(Move(b2, b3, move_types::normal));
   
     // e2 queen
     for (squares::Index target: {f1, f2, g2, f3, d3, d2, c2, d1})
-      expected_moves.emplace(Move(e2, target, Move::Type::normal));
+      expected_moves.emplace(Move(e2, target, move_types::normal));
   
     // h2 pawn
-    expected_moves.emplace(Move(h2, h3, Move::Type::normal));
-    expected_moves.emplace(Move(h2, h4, Move::Type::double_push));
+    expected_moves.emplace(Move(h2, h3, move_types::normal));
+    expected_moves.emplace(Move(h2, h4, move_types::double_push));
   
     // c3 rook
     for (squares::Index target: {c2, c1, d3, b3, a3})
-      expected_moves.emplace(Move(c3, target, Move::Type::normal));
+      expected_moves.emplace(Move(c3, target, move_types::normal));
     
     // e3 bishop
     for (squares::Index target: {f2, g1, d4, d2, c1})
-      expected_moves.emplace(Move(e3, target, Move::Type::normal));
-    expected_moves.emplace(Move(e3, f4, Move::Type::capture));
+      expected_moves.emplace(Move(e3, target, move_types::normal));
+    expected_moves.emplace(Move(e3, f4, move_types::capture));
   
     // b4 knight
     for (squares::Index target: {d5, d3, c2})
-      expected_moves.emplace(Move(b4, target, Move::Type::normal));
+      expected_moves.emplace(Move(b4, target, move_types::normal));
     for (squares::Index target: {a6, c6})
-      expected_moves.emplace(Move(b4, target, Move::Type::capture));
+      expected_moves.emplace(Move(b4, target, move_types::capture));
   
     // c4 pawn
   
@@ -183,28 +183,28 @@ BOOST_AUTO_TEST_CASE(various_moves) {
   
     // c5 knight
     for (squares::Index target: {e6, e4, d3, b3, a4})
-      expected_moves.emplace(Move(c5, target, Move::Type::normal));
+      expected_moves.emplace(Move(c5, target, move_types::normal));
     for (squares::Index target: {a6, b7})
-      expected_moves.emplace(Move(c5, target, Move::Type::capture));
+      expected_moves.emplace(Move(c5, target, move_types::capture));
   
     // f5 pawn
-    expected_moves.emplace(Move(f5, g6, Move::Type::capture));
+    expected_moves.emplace(Move(f5, g6, move_types::capture));
   
     // h5 bishop
-    expected_moves.emplace(Move(h5, g6, Move::Type::normal));
-    expected_moves.emplace(Move(h5, f7, Move::Type::capture));
+    expected_moves.emplace(Move(h5, g6, move_types::normal));
+    expected_moves.emplace(Move(h5, f7, move_types::capture));
   
     // d7 pawn
-    for (Move::Type type: {Move::Type::promotion_knight,
-                           Move::Type::promotion_bishop,
-                           Move::Type::promotion_rook,
-                           Move::Type::promotion_queen}) {
+    for (MoveType type: {move_types::promotion_knight,
+                         move_types::promotion_bishop,
+                         move_types::promotion_rook,
+                         move_types::promotion_queen}) {
       expected_moves.emplace(Move(d7, d8, type));
     }
-    for (Move::Type type: {Move::Type::capturing_promotion_knight,
-                           Move::Type::capturing_promotion_bishop,
-                           Move::Type::capturing_promotion_rook,
-                           Move::Type::capturing_promotion_queen}) {
+    for (MoveType type: {move_types::capturing_promotion_knight,
+                         move_types::capturing_promotion_bishop,
+                         move_types::capturing_promotion_rook,
+                         move_types::capturing_promotion_queen}) {
       expected_moves.emplace(Move(d7, c8, type));
     }
   }
@@ -230,7 +230,7 @@ BOOST_AUTO_TEST_CASE(algebraic_moves) {
 
   State state;
 
-  BOOST_CHECK(Move(e2, e4, Move::Type::double_push).matches_algebraic(NULL, NULL, e4, false));
+  BOOST_CHECK(Move(e2, e4, move_types::double_push).matches_algebraic(NULL, NULL, e4, false));
 
   state.make_moves("e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3 Ba5 d4 exd4 0-0 d3 Qb3 Qf6");
 
@@ -261,21 +261,21 @@ BOOST_AUTO_TEST_CASE(algebraic_moves) {
 
   std::set<Move> expected_moves;
 #define MV(from, to, type) expected_moves.emplace(from, to, type);
-  MV(c3, c4, Move::Type::normal);
-  MV(g2, g3, Move::Type::normal);
-  MV(g2, g4, Move::Type::double_push);
-  MV(h2, h3, Move::Type::normal);
-  MV(h2, h4, Move::Type::double_push);
+  MV(c3, c4, move_types::normal);
+  MV(g2, g3, move_types::normal);
+  MV(g2, g4, move_types::double_push);
+  MV(h2, h3, move_types::normal);
+  MV(h2, h4, move_types::double_push);
   for (squares::Index target: {a4, b5, c6, e8, c8, e6, f5, g4, h3})
-    MV(d7, target, Move::Type::normal);
+    MV(d7, target, move_types::normal);
   for (squares::Index target: {c1, b2, b4, c5, d6})
-    MV(a3, target, Move::Type::normal);
-  MV(a3, e7, Move::Type::capture);
+    MV(a3, target, move_types::normal);
+  MV(a3, e7, move_types::capture);
   for (squares::Index target: {a1, b1, c1, e1, f1, d2, d3, d4, d5, d6})
-    MV(d1, target, Move::Type::normal);
-  MV(f6, e7, Move::Type::capture);
-  MV(g1, f1, Move::Type::normal);
-  MV(g1, h1, Move::Type::normal);
+    MV(d1, target, move_types::normal);
+  MV(f6, e7, move_types::capture);
+  MV(g1, f1, move_types::normal);
+  MV(g1, h1, move_types::normal);
 #undef MV
 
   std::cout << state << std::endl;

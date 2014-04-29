@@ -149,7 +149,7 @@ enum Relativity {
 
 // Generate moves from the set of targets.  `source' is the index of the source square, either
 // relative to the target or absolute.  The moves are added to the `moves' vector.
-void moves_from_targets(std::vector<Move>& moves, const Bitboard targets, const int source_offset, const Relativity relative, const Move::Type type) {
+void moves_from_targets(std::vector<Move>& moves, const Bitboard targets, const int source_offset, const Relativity relative, const MoveType type) {
   squares::do_bits(targets, [&moves, &relative, &source_offset, &type](squares::Index target) {
       squares::Index source = static_cast<squares::Index>(relative*target + source_offset);
       moves.push_back(Move(source, target, type));
@@ -160,9 +160,9 @@ void moves_from_targets(std::vector<Move>& moves, const Bitboard targets, const 
 void moves_from_attacks(std::vector<Move>& moves, const Bitboard attacks,
                         const Bitboard us, const Bitboard them,
                         const int source, const Relativity relativity) {
-  moves_from_targets(moves, attacks & ~us & ~them, source, relativity, Move::Type::normal);
+  moves_from_targets(moves, attacks & ~us & ~them, source, relativity, move_types::normal);
   assert((us & them) == 0);
-  moves_from_targets(moves, attacks & them, source, relativity, Move::Type::capture);
+  moves_from_targets(moves, attacks & them, source, relativity, move_types::capture);
 }
 
 
@@ -180,18 +180,18 @@ void moves::pawn(std::vector<Move>& moves,
 #define FORWARD(pawn) ((pawn) << pd.leftshift >> pd.rightshift)
   // single push
   Bitboard single_push_targets = FORWARD(pawn) & ~flat_occupancy;
-  moves_from_targets(moves, single_push_targets & ~pd.promotion_rank, -direction, relative, Move::Type::normal);
+  moves_from_targets(moves, single_push_targets & ~pd.promotion_rank, -direction, relative, move_types::normal);
   Bitboard promotion_targets = single_push_targets & pd.promotion_rank;
   if (promotion_targets != 0) {
-    for (Move::Type promotion: {Move::Type::promotion_knight, Move::Type::promotion_bishop,
-                                Move::Type::promotion_rook,   Move::Type::promotion_queen}) {
+    for (MoveType promotion: {move_types::promotion_knight, move_types::promotion_bishop,
+                              move_types::promotion_rook,   move_types::promotion_queen}) {
       moves_from_targets(moves, promotion_targets, -direction, relative, promotion);
     }
   }
 
   // double push
   Bitboard double_push_targets = FORWARD(FORWARD(pawn) & ~flat_occupancy) & pd.double_push_target_rank & ~flat_occupancy;
-  moves_from_targets(moves, double_push_targets, -2*direction, relative, Move::Type::double_push);
+  moves_from_targets(moves, double_push_targets, -2*direction, relative, move_types::double_push);
 #undef FORWARD
 
   // captures
@@ -199,11 +199,11 @@ void moves::pawn(std::vector<Move>& moves,
     direction = pd.leftshift - pd.rightshift + pa.leftshift - pa.rightshift;
 
     Bitboard capture_targets = pawn_attacks(pawn, pd, pa) & (occupancy[them] | en_passant_square);
-    moves_from_targets(moves, capture_targets & ~pd.promotion_rank, -direction, relative, Move::Type::capture);
+    moves_from_targets(moves, capture_targets & ~pd.promotion_rank, -direction, relative, move_types::capture);
     promotion_targets = capture_targets & pd.promotion_rank;
     if (promotion_targets != 0) {
-      for (Move::Type promotion: {Move::Type::capturing_promotion_knight, Move::Type::capturing_promotion_bishop,
-                                  Move::Type::capturing_promotion_rook,   Move::Type::capturing_promotion_queen}) {
+      for (MoveType promotion: {move_types::capturing_promotion_knight, move_types::capturing_promotion_bishop,
+                                move_types::capturing_promotion_rook,   move_types::capturing_promotion_queen}) {
         moves_from_targets(moves, promotion_targets, -direction, relative, promotion);
       }
     }
