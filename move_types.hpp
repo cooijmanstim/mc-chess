@@ -2,7 +2,6 @@
 #include <vector>
 
 namespace move_types {
-  // NOTE: at most 16!
 #define KEYWORDS  \
     _(normal) \
     _(double_push) \
@@ -25,10 +24,13 @@ namespace move_types {
 #undef _
 
 #define _(key) #key,
-  static const std::vector<std::string> keywords = {
+  const std::vector<std::string> keywords = {
     KEYWORDS
   };
 #undef _
+
+  const size_t cardinality = sizeof(keywords) / sizeof(keywords[0]);
+  static_assert(cardinality <= 16, "too many move types to encode in available move bits");
 }
 
 typedef move_types::Type MoveType;
