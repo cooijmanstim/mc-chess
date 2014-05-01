@@ -30,12 +30,13 @@ public:
   squares::Index target() const;
 
   bool is_capture() const;
+  boost::optional<Piece> promotion() const;
 
   bool operator==(const Move& that) const;
   bool operator!=(const Move& that) const;
   bool operator< (const Move& that) const; // used for std::set in tests
 
-  bool matches_algebraic(boost::optional<files::Index> source_file, boost::optional<ranks::Index> source_rank, const squares::Index target, const bool is_capture) const;
+  bool matches_algebraic(boost::optional<files::Index> source_file, boost::optional<ranks::Index> source_rank, const squares::Index target, const bool is_capture, boost::optional<Piece> promotion) const;
 
   static Move castle(Color color, Castle castle);
 

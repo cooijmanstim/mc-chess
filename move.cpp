@@ -1,3 +1,4 @@
+#include "pieces.hpp"
 #include "move.hpp"
 
 #include <boost/format.hpp>
@@ -38,6 +39,19 @@ bool Move::is_capture() const {
   }
 }
 
+boost::optional<Piece> Move::promotion() const {
+  switch (type()) {
+#define _(piece) case move_types::promotion_ ## piece: case move_types::capturing_promotion_ ## piece: return pieces:: piece;
+    _(knight);
+    _(bishop);
+    _(rook);
+    _(queen);
+#undef _
+  default:
+    return boost::none;
+  }
+}
+
 bool Move::operator==(const Move& that) const { return this->move == that.move; }
 bool Move::operator!=(const Move& that) const { return this->move != that.move; }
 bool Move::operator< (const Move& that) const { return this->move <  that.move; }
@@ -56,16 +70,18 @@ Move Move::castle(Color color, Castle castle) {
   return castle_moves[color][castle];
 }
 
-
 bool Move::matches_algebraic(boost::optional<files::Index> source_file,
                              boost::optional<ranks::Index> source_rank,
                              const squares::Index target,
-                             const bool is_capture) const {
+                             const bool is_capture,
+                             boost::optional<Piece> promotion) const {
   if (source_file && *source_file != files::by_square(source()))
     return false;
   if (source_rank && *source_rank != ranks::by_square(source()))
     return false;
-  if (is_capture && !this->is_capture())
+  if (is_capture != this->is_capture())
+    return false;
+  if (promotion != this->promotion())
     return false;
   if (target != this->target())
     return false;

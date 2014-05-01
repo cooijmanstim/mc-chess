@@ -244,35 +244,39 @@ boost::optional<Move> State::random_move(boost::mt19937& generator) const {
 }
 
 Move State::parse_algebraic(std::string algebraic) const {
-  boost::regex algebraic_move_regex("([NBRQK]?)([a-h])?([1-8])?(x)?([a-h][1-8])\\+?|(O-O-O|0-0-0)|(O-O|0-0)");
+  boost::regex algebraic_move_regex("(([NBRQK]?)([a-h])?([1-8])?(x)?([a-h][1-8])(=([NBRQ]))?|(O-O-O|0-0-0)|(O-O|0-0))\\+?");
   boost::smatch m;
   if (!boost::regex_match(algebraic, m, algebraic_move_regex))
     throw std::runtime_error(str(boost::format("can't parse algebraic move: %1%") % algebraic));
 
   std::function<bool(const Move&)> predicate;
-  if (m[6].matched) {
+  if (m[9].matched) {
     predicate = [this](const Move& move) {
       return move == Move::castle(us, castles::queenside);
     };
-  } else if (m[7].matched) {
+  } else if (m[10].matched) {
     predicate = [this](const Move& move) {
       return move == Move::castle(us, castles::kingside);
     };
   } else {
-    Piece piece = pieces::type_from_name(std::string(m[1].first, m[1].second));
+    Piece piece = pieces::type_from_name(std::string(m[2].first, m[2].second));
 
     boost::optional<files::Index> source_file;
     boost::optional<ranks::Index> source_rank;
-    if (m[2].matched) source_file = files::by_keyword(std::string(m[2].first, m[2].second));
-    if (m[3].matched) source_rank = ranks::by_keyword(std::string(m[3].first, m[3].second));
+    if (m[3].matched) source_file = files::by_keyword(std::string(m[3].first, m[3].second));
+    if (m[4].matched) source_rank = ranks::by_keyword(std::string(m[4].first, m[4].second));
 
-    bool is_capture = m[4].matched;
-    squares::Index target = squares::by_keyword(std::string(m[5].first, m[5].second));
+    bool is_capture = m[5].matched;
+    
+    squares::Index target = squares::by_keyword(std::string(m[6].first, m[6].second));
 
-    predicate = [this, piece, source_file, source_rank, is_capture, target](const Move& move) {
+    boost::optional<Piece> promotion;
+    if (m[7].matched) promotion = pieces::type_from_name(std::string(m[8].first, m[8].second));
+
+    predicate = [this, piece, source_file, source_rank, target, is_capture, promotion](const Move& move) {
       if (!(board[us][piece] & squares::bitboard(move.source())))
         return false;
-      if (!move.matches_algebraic(source_file, source_rank, target, is_capture))
+      if (!move.matches_algebraic(source_file, source_rank, target, is_capture, promotion))
         return false;
       return true;
     };

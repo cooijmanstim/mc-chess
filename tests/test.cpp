@@ -230,7 +230,7 @@ BOOST_AUTO_TEST_CASE(algebraic_moves) {
 
   State state;
 
-  BOOST_CHECK(Move(e2, e4, move_types::double_push).matches_algebraic(NULL, NULL, e4, false));
+  BOOST_CHECK(Move(e2, e4, move_types::double_push).matches_algebraic(NULL, NULL, e4, false, NULL));
 
   state.make_moves("e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3 Ba5 d4 exd4 0-0 d3 Qb3 Qf6");
 
