@@ -70,6 +70,17 @@ namespace castles {
     return king_targets[color][castle];
   }
 
+  inline Color color(const squares::Index king_source) {
+    using namespace colors;
+    using namespace squares;
+    switch (king_source) {
+    case e1: return white;
+    case e8: return black;
+    default:
+      throw std::runtime_error(str(boost::format("invalid castling king source: %1%") % king_source));
+    }
+  }
+
   inline squares::Index rook_target(const squares::Index king_target) {
     using namespace squares;
     switch (king_target) {
@@ -78,7 +89,7 @@ namespace castles {
     case g8: return f8;
     case c8: return d8;
     default:
-      throw std::runtime_error(str(boost::format("invalid castling king target: %1%") % king_source));
+      throw std::runtime_error(str(boost::format("invalid castling king target: %1%") % king_target));
     }
   }
 
@@ -110,6 +121,19 @@ namespace castles {
       case a8: return queenside;
       default: return boost::none;
       }
+    }
+  }
+
+  inline char symbol(squares::Index king_target) {
+    using namespace squares;
+    using namespace colors;
+    switch (king_target) {
+    case g1: return 'K';
+    case c1: return 'Q';
+    case g8: return 'k';
+    case c8: return 'q';
+    default:
+      throw std::runtime_error(str(boost::format("invalid castling king target: %1%") % king_target));
     }
   }
 

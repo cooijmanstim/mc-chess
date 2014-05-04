@@ -1,7 +1,5 @@
 #pragma once
 
-#include <map>
-
 #include <boost/assign/list_of.hpp>
 
 namespace pieces {
@@ -11,6 +9,10 @@ namespace pieces {
 #undef PIECE_TYPES
 
   const size_t cardinality = sizeof(values) / sizeof(Piece);
+
+  const std::array<char, cardinality> symbols = {
+    'p', 'n', 'b', 'r', 'q', 'k',
+  };
 
   Piece type_from_name(std::string name);
 }

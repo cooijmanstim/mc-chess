@@ -95,3 +95,13 @@ std::ostream& operator<<(std::ostream& o, const Move& m) {
        ")";
   return o;
 }
+
+std::string Move::to_can_string() const {
+  boost::optional<Piece> promotion = this->promotion();
+  return str(boost::format("%1%%2%%3%")
+    % squares::keywords[source()]
+    % squares::keywords[target()]
+    % (promotion
+       ? std::string(1, pieces::symbols[*promotion])
+       : ""));
+}

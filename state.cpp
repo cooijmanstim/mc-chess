@@ -13,6 +13,10 @@ State::State() {
   set_initial_configuration();
 }
 
+State::State(std::string fen) {
+  load_fen(fen);
+}
+
 void State::set_initial_configuration() {
   using namespace colors;
   using namespace pieces;
@@ -46,7 +50,7 @@ void State::set_initial_configuration() {
   compute_hash();
 }
 
-State::State(std::string fen) {
+void State::load_fen(std::string fen) {
   boost::regex fen_regex("((\\w+/){7}\\w+)\\s+([bw])\\s+((K)?(Q)?(k)?(q)?|-)\\s+(([a-h][1-8])|-)\\s+.*");
   boost::smatch m;
   if (!boost::regex_match(fen, m, fen_regex))
@@ -110,7 +114,7 @@ State::State(std::string fen) {
   compute_hash();
 }
 
-State::State(State &that) :
+State::State(const State &that) :
   us(that.us),
   them(that.them),
   board(that.board),
@@ -142,11 +146,6 @@ bool State::operator==(const State &that) const {
 }
 
 std::ostream& operator<<(std::ostream& o, const State& s) {
-  array2d<char, colors::cardinality, pieces::cardinality> symbols = {
-    'P', 'N', 'B', 'R', 'Q', 'K',
-    'p', 'n', 'b', 'r', 'q', 'k',
-  };
-
   Board board(s.board);
   // squares run from white to black, output runs from top to bottom.  flip
   // the board to get white on the bottom.
@@ -159,7 +158,10 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
     for (Color c: colors::values) {
       for (Piece p: pieces::values) {
         if (board[c][p] & squares::bitboard(square)) {
-          o << symbols[c][p];
+          char symbol = pieces::symbols[p];
+          if (c == colors::white)
+            symbol = toupper(symbol);
+          o << symbol;
 
           // take this opportunity to ensure no two pieces are on the same square
           assert(!piece_found);

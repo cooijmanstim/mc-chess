@@ -42,4 +42,5 @@ public:
   static Move castle(Color color, Castle castle);
 
   friend std::ostream& operator<<(std::ostream& o, const Move& m);
+  std::string to_can_string() const;
 };

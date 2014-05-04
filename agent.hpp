@@ -1,4 +1,6 @@
-#include <boost/random.hpp>
+#define BOOST_THREAD_PROVIDES_FUTURE
+#define BOOST_THREAD_USES_MOVE
+#include <boost/thread/future.hpp>
 
 #include "move.hpp"
 #include "state.hpp"
@@ -6,6 +8,7 @@
 class Agent {
   boost::mt19937 generator;
 
+public:
   // ponder the given state
   void start_pondering(const State state);
   void stop_pondering();
@@ -21,7 +24,7 @@ class Agent {
   void abort_decision();
 
   // whether the agent would draw in this state if it were playing color
-  boolean accept_draw(const State& state, const Color color);
+  bool accept_draw(const State& state, const Color color);
 
   // stop consuming cpu time and don't worry about saving state
   void idle();
@@ -31,4 +34,4 @@ class Agent {
 
   // resume after pause()
   void resume();
-}
+};

@@ -32,11 +32,12 @@ public:
   State();
   State(std::string fen);
   ~State();
-  State(State &that);
+  State(const State &that);
   bool operator==(const State &that) const;
 
   void empty_board();
   void set_initial_configuration();
+  void load_fen(std::string fen);
 
   friend std::ostream& operator<<(std::ostream& o, const State& s);
 
@@ -79,5 +80,15 @@ public:
                                      Hash& hash) const;
 };
 
-class AlgebraicUnderdeterminedException : public runtime_error {}
-class AlgebraicOverdeterminedException : public runtime_error {}
+class AlgebraicUnderdeterminedException : public std::runtime_error {
+public:
+  AlgebraicUnderdeterminedException(std::string message)
+  : std::runtime_error(message)
+  {}
+};
+class AlgebraicOverdeterminedException : public std::runtime_error {
+public:
+  AlgebraicOverdeterminedException(std::string message)
+  : std::runtime_error(message)
+  {}
+};

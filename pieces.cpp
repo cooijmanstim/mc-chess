@@ -1,3 +1,5 @@
+#include <map>
+
 #include <boost/format.hpp>
 
 #include "pieces.hpp"
