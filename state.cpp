@@ -10,6 +10,10 @@
 #include "direction.hpp"
 
 State::State() {
+  set_initial_configuration();
+}
+
+void State::set_initial_configuration() {
   using namespace colors;
   using namespace pieces;
   using namespace squares::bitboards;
@@ -42,8 +46,7 @@ State::State() {
   compute_hash();
 }
 
-State::State(std::string fen)
-{
+State::State(std::string fen) {
   boost::regex fen_regex("((\\w+/){7}\\w+)\\s+([bw])\\s+((K)?(Q)?(k)?(q)?|-)\\s+(([a-h][1-8])|-)\\s+.*");
   boost::smatch m;
   if (!boost::regex_match(fen, m, fen_regex))
@@ -293,9 +296,9 @@ Move State::parse_algebraic(std::string algebraic) const {
   }
 
   if (candidates.empty())
-    throw std::runtime_error(str(boost::format("no match for algebraic move: %1%") % algebraic));
+    throw AlgebraicOverdeterminedException(str(boost::format("no match for algebraic move: %1%") % algebraic));
   if (candidates.size() > 1)
-    throw std::runtime_error(str(boost::format("ambiguous algebraic move: %1%, candidates: %2%") % algebraic % candidates));
+    throw AlgebraicUnderdeterminedException(str(boost::format("ambiguous algebraic move: %1%, candidates: %2%") % algebraic % candidates));
   return candidates[0];
 }
 

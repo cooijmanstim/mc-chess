@@ -6,6 +6,7 @@
 #include <boost/optional.hpp>
 
 #include "colors.hpp"
+#include "pieces.hpp"
 #include "partitions.hpp"
 #include "castles.hpp"
 #include "move_types.hpp"

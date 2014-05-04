@@ -36,6 +36,7 @@ public:
   bool operator==(const State &that) const;
 
   void empty_board();
+  void set_initial_configuration();
 
   friend std::ostream& operator<<(std::ostream& o, const State& s);
 
@@ -77,3 +78,6 @@ public:
                                      Occupancy& occupancy,
                                      Hash& hash) const;
 };
+
+class AlgebraicUnderdeterminedException : public runtime_error {}
+class AlgebraicOverdeterminedException : public runtime_error {}
