@@ -9,6 +9,8 @@
 #include "state.hpp"
 #include "agent.hpp"
 
+#define fmt boost::format
+
 class Game {
   std::stack<State> history;
 
@@ -43,7 +45,7 @@ public:
   }
 };
 
-const auto features = {
+const std::vector<std::string> features = {
   "done=0",
   "ping=1",
   "setboard=1",
@@ -63,27 +65,16 @@ const auto features = {
   "name=0",
   "pause=1",
   "nps=0",
-  "debug=0",
+  "debug=1",
   "memory=0",
   "smp=0",
   "done=1",
 };
 
-std::string read_command() {
-  std::string line;
-  std::getline(std::cin, line);
-  return line;
-}
+void interface_with(std::istream& in, std::ostream& out) {
+  out.setf(std::ios::unitbuf);
 
-int main(int argc, char* argv[]) {
-  std::cout.setf(std::ios::unitbuf);
-  
-#define protocol_assert(condition, message) \
-  if (!(condition)) \
-    tellError("protocol assumption violated", message);
-#define tell(s) std::cout << s << std::endl;
-#define tellIllegal(s) tell("Illegal move: " << s);
-#define tellError(s, t) tell("Error (" << s << "): " << t);
+  bool debug = true;
   
   Game game;
   Agent agent;
@@ -93,18 +84,49 @@ int main(int argc, char* argv[]) {
   boost::future<Move> future_decision;
   boost::future<std::string> future_command;
 
+  auto protocol_debug = [&](std::string s) {
+    if (debug)
+      out << "#" << s << std::endl;
+  };
+
+  auto recv_command = [&]() {
+    std::string line;
+    if (!std::getline(in, line))
+      future_quit = boost::make_ready_future();
+    protocol_debug("<xboard> " + line);
+    return line;
+  };
+
+  auto send_command = [&](std::string line) {
+    protocol_debug("<engine> " + line);
+    out << line << std::endl;
+  };
+
+  auto report_illegal = [&](std::string move) {
+    send_command("Illegal move: " + move);
+  };
+
+  auto report_error = [&](std::string class_, std::string instance) {
+    send_command("Error (" + class_ + "): " + instance);
+  };
+
+  auto protocol_assert = [&](bool condition, std::string message) {
+    if (!condition)
+      report_error("protocol assumption violated", message);
+  };
+
   typedef std::vector<std::string> ARGV;
 
-  std::function<void(std::vector<std::string>)> do_nothing = [](ARGV argv){};
-  std::function<void(std::vector<std::string>)> unsupported = [](ARGV argv){
-    tell("telluser Unsupported"); // FIXME: or something like this
+  std::function<void(std::vector<std::string>)> do_nothing = [&](ARGV argv){};
+  std::function<void(std::vector<std::string>)> unsupported = [&](ARGV argv){
+    report_error("unsupported", argv[0]);
   };
 
   std::map<std::string, std::function<void(std::vector<std::string>)> > handlers = {
     {"xboard", do_nothing},
-    {"protover", [](ARGV argv) {
+    {"protover", [&](ARGV argv) {
         for (auto feature: features)
-          tell("feature " << feature);
+          send_command("feature " + feature);
       }},
     // TODO: handle these as soon as we get a use case
     {"accepted", unsupported},
@@ -149,10 +171,10 @@ int main(int argc, char* argv[]) {
         try {
           move = game.current_state().parse_algebraic(argv[1]);
         } catch (AlgebraicOverdeterminedException& e) {
-          tellIllegal(argv[1]);
+          report_illegal(argv[1]);
           return;
         } catch (AlgebraicUnderdeterminedException& e) {
-          tellError("ambiguous move", argv[1]);
+          report_error("ambiguous move", argv[1]);
           return;
         }
         game.make_move(move);
@@ -168,13 +190,13 @@ int main(int argc, char* argv[]) {
     {"ping", [&](ARGV argv) {
         if (future_decision.valid())
           future_decision.wait();
-        tell("pong " << argv[0]);
+        send_command("pong " + argv[1]);
       }},
     {"draw", [&](ARGV argv) {
         protocol_assert(agent_color, "\"draw\" when engine not assigned to any color");
         const State& state = game.current_state();
         if (agent.accept_draw(state, *agent_color))
-          tell("offer draw");
+          send_command("offer draw");
       }},
     {"result", [&](ARGV argv) {
         agent.idle();
@@ -221,7 +243,7 @@ int main(int argc, char* argv[]) {
 
   auto handle_decision = [&](){
     Move move = future_decision.get();
-    tell("move " << move.to_can_string());
+    send_command("move " + move.to_can_string());
     game.make_move(move);
     // there has to be a better way to make sure we don't keep redetecting
     // the same future decision value, but i don't know it.  really, the
@@ -249,23 +271,21 @@ int main(int argc, char* argv[]) {
     try {
       handler = handlers.at(argv[0]);
     } catch (std::out_of_range& e) {
-      protocol_assert(false, "unknown command: " << line);
+      protocol_assert(false, "unknown command: " + line);
       goto after_handler;
     }
     handler(argv);
 
     after_handler:
-    future_command = boost::async(read_command);
+    future_command = boost::async(recv_command);
   };
   
-  future_command = boost::async(read_command);
+  future_command = boost::async(recv_command);
   while (true) {
     unsigned short ifuture;
-    while (true) {
-      try {
-        ifuture = boost::wait_for_any(future_quit, future_decision, future_command);
-      } catch (boost::thread_interrupted&) {
-      }
+    try {
+      ifuture = boost::wait_for_any(future_quit, future_decision, future_command);
+    } catch (boost::thread_interrupted&) {
     }
 
     switch (ifuture) {
@@ -278,11 +298,15 @@ int main(int argc, char* argv[]) {
     case 2:
       handle_command();
       break;
-    default:
-      assert(false);
     }
+
+    ifuture = -1;
   }
 
   quit:
   ;
+}
+
+int main(int argc, char* argv[]) {
+  interface_with(std::cin, std::cout);
 }
