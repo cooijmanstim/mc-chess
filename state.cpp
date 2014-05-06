@@ -249,7 +249,7 @@ boost::optional<Move> State::random_move(boost::mt19937& generator) const {
 }
 
 Move State::parse_algebraic(std::string algebraic) const {
-  boost::regex algebraic_move_regex("(([NBRQK]?)([a-h])?([1-8])?(x)?([a-h][1-8])(=([NBRQ]))?|(O-O-O|0-0-0)|(O-O|0-0))\\+?");
+  boost::regex algebraic_move_regex("(([NBRQK]?)([a-h])?([1-8])?(x)?([a-h][1-8])(=([NBRQ]))?|(O-O-O|0-0-0)|(O-O|0-0))[+#]?");
   boost::smatch m;
   if (!boost::regex_match(algebraic, m, algebraic_move_regex))
     throw std::runtime_error(str(boost::format("can't parse algebraic move: %1%") % algebraic));
