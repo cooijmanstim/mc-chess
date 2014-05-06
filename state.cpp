@@ -382,6 +382,10 @@ void State::update_en_passant_square(const Move& move, const Piece piece, const 
   case move_types::promotion_bishop:
   case move_types::promotion_rook:
   case move_types::promotion_queen:
+  case move_types::capturing_promotion_knight:
+  case move_types::capturing_promotion_bishop:
+  case move_types::capturing_promotion_rook:
+  case move_types::capturing_promotion_queen:
   case move_types::normal:
     en_passant_square = 0;
     break;
