@@ -7,7 +7,8 @@
 
 #include "move.hpp"
 #include "state.hpp"
-#include "agent.hpp"
+#include "random_agent.hpp"
+#include "mcts_agent.hpp"
 
 #define fmt boost::format
 
@@ -77,7 +78,7 @@ void interface_with(std::istream& in, std::ostream& out) {
   bool debug = true;
   
   Game game;
-  Agent agent;
+  MCTSAgent agent;
   boost::optional<Color> agent_color;
 
   boost::future<void> future_quit;

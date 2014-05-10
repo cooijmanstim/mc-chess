@@ -6,9 +6,9 @@ use-project /boost : /home/tim/src/boost_1_55_0 ;
 
 lib game : [ glob *.cpp : main.cpp ] /boost//regex /boost//thread : ;
 
-exe main : main.cpp game /boost//regex /boost/thread ;
+exe main : main.cpp game /boost//regex /boost//thread ;
 
 for test in [ glob tests/*.cpp ] {
-    unit-test $(test:B) : $(test) game /boost//regex ;
+    unit-test $(test:B) : $(test) game /boost//regex /boost//thread ;
 }
 

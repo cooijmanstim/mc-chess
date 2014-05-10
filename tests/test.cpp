@@ -12,6 +12,7 @@
 #include "state.hpp"
 #include "move_generation.hpp"
 #include "hash.hpp"
+#include "mcts_agent.hpp"
 
 // NOTE: evaluates arguments twice
 #define BOOST_CHECK_BITBOARDS_EQUAL(a, b) \
@@ -307,4 +308,11 @@ BOOST_AUTO_TEST_CASE(move_randomly) {
     BOOST_CHECK(hash != 0); // probably not zero
     BOOST_CHECK_EQUAL(state.hash, hash);
   }
+}
+
+BOOST_AUTO_TEST_CASE(mcts) {
+  State state;
+  MCTSAgent agent;
+  auto decision = agent.start_decision(state);
+  decision.get();
 }

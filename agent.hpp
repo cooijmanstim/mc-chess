@@ -1,37 +1,36 @@
+#pragma once
+
 #define BOOST_THREAD_PROVIDES_FUTURE
 #define BOOST_THREAD_USES_MOVE
 #include <boost/thread/future.hpp>
 
-#include "move.hpp"
 #include "state.hpp"
 
 class Agent {
-  boost::mt19937 generator;
-
 public:
   // ponder the given state
-  void start_pondering(const State state);
-  void stop_pondering();
+  virtual void start_pondering(const State state) = 0;
+  virtual void stop_pondering() = 0;
 
   // decide synchronously
-  Move decide(const State& state);
+  virtual Move decide(const State& state) = 0;
 
   // decide asynchronously
-  boost::future<Move> start_decision(const State state);
+  virtual boost::future<Move> start_decision(const State state) = 0;
   // tell the decision process to make up its mind
-  void finalize_decision();
+  virtual void finalize_decision() = 0;
   // tell the decision process to nevermind
-  void abort_decision();
+  virtual void abort_decision() = 0;
 
   // whether the agent would draw in this state if it were playing color
-  bool accept_draw(const State& state, const Color color);
+  virtual bool accept_draw(const State& state, const Color color) = 0;
 
   // stop consuming cpu time and don't worry about saving state
-  void idle();
+  virtual void idle() = 0;
 
   // stop consuming cpu time temporarily, save state
-  void pause();
+  virtual void pause() = 0;
 
   // resume after pause()
-  void resume();
+  virtual void resume() = 0;
 };
