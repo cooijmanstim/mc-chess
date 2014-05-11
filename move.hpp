@@ -21,6 +21,7 @@ class Move {
 public:
 
   Move();
+  Move(Word move); // from gdb
   Move(const int source, const int target, const MoveType type);
   Move(const Move& that);
 

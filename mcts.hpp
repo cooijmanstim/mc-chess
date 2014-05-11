@@ -16,7 +16,7 @@ namespace mcts {
     Color last_player;
     std::vector<Move> unexplored_moves;
     std::vector<FarNode> children;
-    size_t nwins;
+    size_t total_result;
     size_t nvisits;
 
     Node();

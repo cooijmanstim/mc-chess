@@ -45,13 +45,15 @@ void State::set_initial_configuration() {
 
   us = white; them = black;
 
+  halfmove_clock = 0;
+
   compute_occupancy();
   compute_their_attacks();
   compute_hash();
 }
 
 void State::load_fen(std::string fen) {
-  boost::regex fen_regex("((\\w+/){7}\\w+)\\s+([bw])\\s+((K)?(Q)?(k)?(q)?|-)\\s+(([a-h][1-8])|-)\\s+.*");
+  boost::regex fen_regex("((\\w+/){7}\\w+)\\s+([bw])\\s+((K)?(Q)?(k)?(q)?|-)\\s+(([a-h][1-8])|-)\\s+(\\d+)\\s+.*");
   boost::smatch m;
   if (!boost::regex_match(fen, m, fen_regex))
     throw std::runtime_error(str(boost::format("can't parse FEN: %1%") % fen));
@@ -109,6 +111,8 @@ void State::load_fen(std::string fen) {
   us = color_to_move;
   them = us == colors::white ? colors::black : colors::white;
 
+  halfmove_clock = std::stoi(std::string(m[11].first, m[11].second));
+
   compute_occupancy();
   compute_their_attacks();
   compute_hash();
@@ -138,6 +142,8 @@ bool State::operator==(const State &that) const {
   if (this == &that)
     return true;
   
+  // NOTE: the halfmove clock is not compared. it is really only used to cut
+  // short simulations.
   return this->hash == that.hash &&
          this->us == that.us && this->them == that.them &&
          this->en_passant_square == that.en_passant_square &&
@@ -199,10 +205,9 @@ bool State::leaves_king_in_check(const Move& move) const {
                  target = squares::bitboard(move.target());
 
   Bitboard king = board[us][pieces::king];
-
-  // king move?
+  // king move
   if (source & king)
-    return target & their_attacks;
+    king = target;
 
   // only occupancy and their halfboard make a difference
   Occupancy occupancy(this->occupancy);
@@ -417,6 +422,7 @@ void State::make_move_on_their_halfboard(const Move& move, const Piece piece, co
     } else {
       for (Piece capturee: pieces::values) {
         if (their_halfboard[capturee] & target) {
+          assert(capturee != pieces::king);
           their_halfboard[capturee] &= ~target;
           toggle(hash, them, capturee, squares::index(target));
           break;
@@ -536,8 +542,19 @@ void State::make_move(const Move& move) {
   make_move_on_their_halfboard (move, piece, source, target, board[them], hash);
   make_move_on_occupancy       (move, piece, source, target, occupancy, hash);
 
+#ifndef NDEBUG
+  compute_their_attacks();
+  assert(!our_king_in_check());
+#endif
+
   std::swap(us, them);
   hash ^= hashes::black_to_move();
+
+  if (piece == pieces::pawn || move.is_capture()) {
+    halfmove_clock = 0;
+  } else {
+    halfmove_clock++;
+  }
 
   compute_their_attacks();
 }
@@ -576,4 +593,22 @@ void State::compute_hash(Hash &hash) {
 
   if (en_passant_square)
     hash ^= hashes::en_passant(en_passant_square);
+}
+
+bool State::drawn_by_50() {
+  return halfmove_clock >= 50;
+}
+
+bool State::our_king_in_check() {
+  return board[us][pieces::king] & their_attacks;
+}
+
+// NOTE: assumes game is over
+boost::optional<Color> State::winner() {
+  if (drawn_by_50())
+    return boost::none;
+  assert(moves().empty());
+  if (our_king_in_check())
+      return them;
+  return boost::none;
 }

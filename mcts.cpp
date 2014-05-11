@@ -2,6 +2,11 @@
 
 using namespace mcts;
 
+const int loss_value = 0,
+          draw_value = 1,
+           win_value = 2;
+const int result_factor = 2;
+
 Node::Node() {
 }
 
@@ -15,7 +20,7 @@ FarNode Node::create(FarNode parent, boost::optional<Move> move, const State& st
   node->last_move = move;
   node->last_player = colors::opposite(state.us);
   node->unexplored_moves = state.moves();
-  node->nwins = 0;
+  node->total_result = 0;
   node->nvisits = 0;
   return node;
 }
@@ -59,13 +64,27 @@ FarNode Node::expand(State& state, boost::mt19937& generator) {
   }
 }
 
+#define ROLLOUT_TRACK_HISTORY 1
 int Node::rollout(State& state, boost::mt19937& generator) {
+#if ROLLOUT_TRACK_HISTORY
+  State initial_state(state);
+  std::vector<Move> move_history; // for debugging
+#endif
   while (true) {
+    if (state.drawn_by_50())
+      return draw_value;
     boost::optional<Move> move = state.random_move(generator);
     if (!move)
-      return state.us == this->last_player ? 0 : 1;
+      break;
+#if ROLLOUT_TRACK_HISTORY
+    move_history.push_back(*move);
+#endif
     state.make_move(*move);
   }
+  boost::optional<Color> winner = state.winner();
+  if (!winner)
+    return draw_value;
+  return *winner == last_player ? win_value : loss_value;
 }
 
 void Node::backprop(int result) {
@@ -75,13 +94,13 @@ void Node::backprop(int result) {
 }
 
 void Node::update(int result) {
-  nwins += result;
+  total_result += result;
   nvisits++;
 }
 
 float Node::uct_score(FarNode child) {
   assert(child->parent);
-  return float(child->nwins) / child->nvisits + sqrt(2 * log(child->parent->nvisits) / child->nvisits);
+  return float(child->total_result) / result_factor / child->nvisits + sqrt(2 * log(child->parent->nvisits) / child->nvisits);
 }
 
 float Node::most_visited(FarNode child) {

@@ -6,6 +6,10 @@
 Move::Move() : move(0) {
 }
 
+Move::Move(Word move) {
+  this->move = move;
+}
+
 Move::Move(const int source, const int target, const MoveType type) {
   assert(0 <= source && (size_t)source < squares::cardinality);
   assert(0 <= target && (size_t)target < squares::cardinality);

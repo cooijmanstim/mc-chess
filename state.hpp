@@ -24,6 +24,10 @@ public:
   // pawn will end up.
   Bitboard en_passant_square;
 
+  // number of halfmoves since last capture or pawn move
+  // NOTE: does not affect hash
+  size_t halfmove_clock;
+
   // redundant
   Occupancy occupancy;
   Bitboard their_attacks;
@@ -54,13 +58,6 @@ public:
   void make_moves(std::vector<std::string> algebraic_moves);
   void make_move(const Move& m);
 
-  void compute_occupancy();
-  void compute_their_attacks();
-  void compute_hash();
-  void compute_occupancy(Occupancy& occupancy);
-  void compute_their_attacks(Bitboard& their_attacks);
-  void compute_hash(Hash& hash);
-
   Piece moving_piece(const Move& move, const Halfboard& us) const;
   bool leaves_king_in_check(const Move& m) const;
   void make_move_on_their_halfboard (const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
@@ -78,6 +75,17 @@ public:
   void make_move_on_occupancy       (const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
                                      Occupancy& occupancy,
                                      Hash& hash) const;
+
+  void compute_occupancy();
+  void compute_their_attacks();
+  void compute_hash();
+  void compute_occupancy(Occupancy& occupancy);
+  void compute_their_attacks(Bitboard& their_attacks);
+  void compute_hash(Hash& hash);
+
+  bool drawn_by_50();
+  bool our_king_in_check();
+  boost::optional<Color> winner();
 };
 
 class AlgebraicUnderdeterminedException : public std::runtime_error {
