@@ -6,6 +6,7 @@
 #include "util.hpp"
 #include "colors.hpp"
 #include "pieces.hpp"
+#include "colored_piece.hpp"
 #include "board.hpp"
 #include "bitboard.hpp"
 #include "move_generation.hpp"
@@ -42,6 +43,7 @@ public:
   void empty_board();
   void set_initial_configuration();
   void load_fen(std::string fen);
+  std::string dump_fen();
 
   friend std::ostream& operator<<(std::ostream& o, const State& s);
 
@@ -58,6 +60,7 @@ public:
   void make_moves(std::vector<std::string> algebraic_moves);
   void make_move(const Move& m);
 
+  boost::optional<ColoredPiece> colored_piece_at(squares::Index square);
   Piece moving_piece(const Move& move, const Halfboard& us) const;
   bool leaves_king_in_check(const Move& m) const;
   void make_move_on_their_halfboard (const Move& move, const Piece piece, const Bitboard source, const Bitboard target,

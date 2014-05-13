@@ -52,6 +52,51 @@ void State::set_initial_configuration() {
   compute_hash();
 }
 
+std::string State::dump_fen() {
+  std::stringstream ss;
+  auto square = std::begin(squares::indices);
+  for (ranks::Index rank: ranks::indices) {
+    size_t empty_count = 0;
+    for (files::Index file: files::indices) {
+      boost::optional<ColoredPiece> colored_piece = colored_piece_at(*square);
+      if (colored_piece) {
+        if (empty_count > 0) {
+          ss << empty_count;
+          empty_count = 0;
+        }
+        ss << colored_piece->symbol();
+      } else {
+        empty_count++;
+      }
+      square++;
+    }
+    if (empty_count > 0)
+      ss << empty_count;
+    if (rank != ranks::_8)
+      ss << "/";
+  }
+  ss << " ";
+  ss << colors::symbol(us);
+  ss << " ";
+  for (Color color: colors::values) {
+    for (Castle castle: castles::values) {
+      if (castling_rights[color][castle]) {
+        ss << castles::symbol(color, castle);
+      }
+    }
+  }
+  ss << " ";
+  if (en_passant_square)
+    ss << squares::keywords[squares::index(en_passant_square)];
+  else
+    ss << "-";
+  ss << " ";
+  ss << halfmove_clock;
+  ss << " ";
+  ss << 0;
+  return ss.str();
+}
+
 void State::load_fen(std::string fen) {
   boost::regex fen_regex("((\\w+/){7}\\w+)\\s+([bw])\\s+((K)?(Q)?(k)?(q)?|-)\\s+(([a-h][1-8])|-)\\s+(\\d+)\\s+.*");
   boost::smatch m;
@@ -164,10 +209,7 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
     for (Color c: colors::values) {
       for (Piece p: pieces::values) {
         if (board[c][p] & squares::bitboard(square)) {
-          char symbol = pieces::symbols[p];
-          if (c == colors::white)
-            symbol = toupper(symbol);
-          o << symbol;
+          o << ColoredPiece(c, p).symbol();
 
           // take this opportunity to ensure no two pieces are on the same square
           assert(!piece_found);
@@ -322,6 +364,15 @@ void State::make_moves(std::vector<std::string> algebraic_moves) {
   for (std::string algebraic_move: algebraic_moves) {
     make_move(parse_algebraic(algebraic_move));
   }
+}
+
+boost::optional<ColoredPiece> State::colored_piece_at(squares::Index square) {
+  Bitboard bitboard = squares::bitboard(square);
+  for (Color color: colors::values)
+    for (Piece piece: pieces::values)
+      if (board[color][piece] & bitboard)
+        return ColoredPiece(color, piece);
+  return boost::none;
 }
 
 Piece State::moving_piece(const Move& move, const Halfboard& us) const {
