@@ -171,7 +171,8 @@ State::State(const State &that) :
   en_passant_square(that.en_passant_square),
   occupancy(that.occupancy),
   their_attacks(that.their_attacks),
-  hash(that.hash)
+  hash(that.hash),
+  halfmove_clock(that.halfmove_clock)
 {
 }
 
