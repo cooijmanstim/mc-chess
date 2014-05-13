@@ -258,8 +258,7 @@ void interface_with(std::istream& in, std::ostream& out) {
     // boost::welcome_committee and a boost::mayor to ceremonially snip a
     // ribbon with a giant pair of scissors and...  what was the question?
     future_decision = boost::async([]() -> Move {
-        while (true)
-          boost::this_thread::sleep_for(boost::chrono::hours(1000));
+        sleep_forever();
         throw std::runtime_error("greetings, time traveler!");
       });
   };

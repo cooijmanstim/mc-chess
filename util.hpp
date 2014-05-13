@@ -7,3 +7,11 @@ template <typename T, int M, int N> using array2d = std::array<std::array<T, N>,
 template <typename T, int M, int N, int O> using array3d = std::array<std::array<std::array<T, O>, N>, M>;
 
 void print_backtrace();
+
+void debuggable_abort();
+void sleep_forever();
+
+#include <vector>
+class State;
+class Move;
+void dump_for_debug(State state, std::vector<Move> moves);

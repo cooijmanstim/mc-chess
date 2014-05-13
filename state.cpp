@@ -383,8 +383,8 @@ Piece State::moving_piece(const Move& move, const Halfboard& us) const {
   }
   std::cerr << "State::moving_piece: no match for move " << move << " in state: " << std::endl;
   std::cerr << *this << std::endl;
-  print_backtrace();
-  assert(false);
+  debuggable_abort();
+  throw std::runtime_error("no such piece");
 }
 
 void State::update_castling_rights(const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
@@ -595,7 +595,12 @@ void State::make_move(const Move& move) {
 
 #ifndef NDEBUG
   compute_their_attacks();
-  assert(!our_king_in_check());
+  if (our_king_in_check()) {
+    std::cerr << "State::make_move: king left in check after " << move << " in state: " << std::endl;
+    std::cerr << *this << std::endl;
+    debuggable_abort();
+    throw std::runtime_error("king left in check after move");
+  }
 #endif
 
   std::swap(us, them);
