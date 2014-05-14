@@ -74,24 +74,6 @@ Move Move::castle(Color color, Castle castle) {
   return castle_moves[color][castle];
 }
 
-bool Move::matches_algebraic(boost::optional<files::Index> source_file,
-                             boost::optional<ranks::Index> source_rank,
-                             const squares::Index target,
-                             const bool is_capture,
-                             boost::optional<Piece> promotion) const {
-  if (source_file && *source_file != files::by_square(source()))
-    return false;
-  if (source_rank && *source_rank != ranks::by_square(source()))
-    return false;
-  if (is_capture != this->is_capture())
-    return false;
-  if (promotion != this->promotion())
-    return false;
-  if (target != this->target())
-    return false;
-  return true;
-}
-
 std::ostream& operator<<(std::ostream& o, const Move& m) {
   o << "Move(" << squares::keywords[m.source()] <<
        "->" << squares::keywords[m.target()] <<
@@ -100,12 +82,3 @@ std::ostream& operator<<(std::ostream& o, const Move& m) {
   return o;
 }
 
-std::string Move::to_can_string() const {
-  boost::optional<Piece> promotion = this->promotion();
-  return str(boost::format("%1%%2%%3%")
-    % squares::keywords[source()]
-    % squares::keywords[target()]
-    % (promotion
-       ? std::string(1, pieces::symbols[*promotion])
-       : ""));
-}

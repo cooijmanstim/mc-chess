@@ -8,5 +8,8 @@ struct ColoredPiece {
   Piece piece;
 
   ColoredPiece(Color color, Piece piece);
-  char symbol();
+  char symbol() const;
+
+  bool operator==(const ColoredPiece& that) const;
+  bool operator!=(const ColoredPiece& that) const;
 };

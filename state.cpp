@@ -296,78 +296,7 @@ boost::optional<Move> State::random_move(boost::mt19937& generator) const {
   return move;
 }
 
-Move State::parse_algebraic(std::string algebraic) const {
-  boost::regex algebraic_move_regex("(([NBRQK]?)([a-h])?([1-8])?(x)?([a-h][1-8])(=([NBRQ]))?|(O-O-O|0-0-0)|(O-O|0-0))[+#]?");
-  boost::smatch m;
-  if (!boost::regex_match(algebraic, m, algebraic_move_regex))
-    throw std::runtime_error(str(boost::format("can't parse algebraic move: %1%") % algebraic));
-
-  std::function<bool(const Move&)> predicate;
-  if (m[9].matched) {
-    predicate = [this](const Move& move) {
-      return move == Move::castle(us, castles::queenside);
-    };
-  } else if (m[10].matched) {
-    predicate = [this](const Move& move) {
-      return move == Move::castle(us, castles::kingside);
-    };
-  } else {
-    Piece piece = pieces::type_from_name(std::string(m[2].first, m[2].second));
-
-    boost::optional<files::Index> source_file;
-    boost::optional<ranks::Index> source_rank;
-    if (m[3].matched) source_file = files::by_keyword(std::string(m[3].first, m[3].second));
-    if (m[4].matched) source_rank = ranks::by_keyword(std::string(m[4].first, m[4].second));
-
-    bool is_capture = m[5].matched;
-    
-    squares::Index target = squares::by_keyword(std::string(m[6].first, m[6].second));
-
-    boost::optional<Piece> promotion;
-    if (m[7].matched) promotion = pieces::type_from_name(std::string(m[8].first, m[8].second));
-
-    predicate = [this, piece, source_file, source_rank, target, is_capture, promotion](const Move& move) {
-      if (!(board[us][piece] & squares::bitboard(move.source())))
-        return false;
-      if (!move.matches_algebraic(source_file, source_rank, target, is_capture, promotion))
-        return false;
-      return true;
-    };
-  }
-
-  std::vector<Move> candidates = moves();
-
-  for (auto it = candidates.begin(); it != candidates.end(); ) {
-    if (!predicate(*it)) {
-      it = candidates.erase(it);
-    } else {
-      it++;
-    }
-  }
-
-  if (candidates.empty())
-    throw AlgebraicOverdeterminedException(str(boost::format("no match for algebraic move: %1%") % algebraic));
-  if (candidates.size() > 1)
-    throw AlgebraicUnderdeterminedException(str(boost::format("ambiguous algebraic move: %1%, candidates: %2%") % algebraic % candidates));
-  return candidates[0];
-}
-
-void State::make_moves(std::string algebraic_variation) {
-  boost::regex algebraic_separator("\\s+(\\d+\\.)?");
-  std::vector<std::string> algebraic_moves;
-  boost::algorithm::split_regex(algebraic_moves,
-                                boost::algorithm::trim_copy(algebraic_variation),
-                                algebraic_separator);
-  make_moves(algebraic_moves);
-}
-
-void State::make_moves(std::vector<std::string> algebraic_moves) {
-  for (std::string algebraic_move: algebraic_moves) {
-    make_move(parse_algebraic(algebraic_move));
-  }
-}
-
-boost::optional<ColoredPiece> State::colored_piece_at(squares::Index square) {
+boost::optional<ColoredPiece> State::colored_piece_at(squares::Index square) const {
   Bitboard bitboard = squares::bitboard(square);
   for (Color color: colors::values)
     for (Piece piece: pieces::values)
@@ -652,16 +581,16 @@ void State::compute_hash(Hash &hash) {
     hash ^= hashes::en_passant(en_passant_square);
 }
 
-bool State::drawn_by_50() {
+bool State::drawn_by_50() const {
   return halfmove_clock >= 50;
 }
 
-bool State::our_king_in_check() {
+bool State::our_king_in_check() const {
   return board[us][pieces::king] & their_attacks;
 }
 
 // NOTE: assumes game is over
-boost::optional<Color> State::winner() {
+boost::optional<Color> State::winner() const {
   if (drawn_by_50())
     return boost::none;
   assert(moves().empty());

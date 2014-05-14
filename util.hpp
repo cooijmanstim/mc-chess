@@ -15,3 +15,5 @@ void sleep_forever();
 class State;
 class Move;
 void dump_for_debug(State state, std::vector<Move> moves);
+
+std::vector<std::string> words(std::string string);

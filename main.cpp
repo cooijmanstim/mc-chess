@@ -9,6 +9,7 @@
 #include "state.hpp"
 #include "random_agent.hpp"
 #include "mcts_agent.hpp"
+#include "notation.hpp"
 
 #define fmt boost::format
 
@@ -170,11 +171,11 @@ void interface_with(std::istream& in, std::ostream& out) {
                         "usermove during engine's turn");
         Move move;
         try {
-          move = game.current_state().parse_algebraic(argv[1]);
-        } catch (AlgebraicOverdeterminedException& e) {
+          move = notation::algebraic::parse(argv[1], game.current_state());
+        } catch (notation::algebraic::OverdeterminedException& e) {
           report_illegal(argv[1]);
           return;
-        } catch (AlgebraicUnderdeterminedException& e) {
+        } catch (notation::algebraic::UnderdeterminedException& e) {
           report_error("ambiguous move", argv[1]);
           return;
         }
@@ -244,7 +245,7 @@ void interface_with(std::istream& in, std::ostream& out) {
 
   auto handle_decision = [&](){
     Move move = future_decision.get();
-    send_command("move " + move.to_can_string());
+    send_command("move " + notation::coordinate::format(move));
     game.make_move(move);
     // there has to be a better way to make sure we don't keep redetecting
     // the same future decision value, but i don't know it.  really, the

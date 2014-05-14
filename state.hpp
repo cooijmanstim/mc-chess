@@ -50,17 +50,11 @@ public:
   std::vector<Move> moves() const;
   boost::optional<Move> random_move(boost::mt19937& generator) const;
 
-  Move parse_algebraic(std::string algebraic) const;
-  std::vector<Move> match_algebraic(const Piece piece,
-                                    boost::optional<files::Index> source_file,
-                                    boost::optional<ranks::Index> source_rank,
-                                    const Bitboard target,
-                                    const bool is_capture) const;
   void make_moves(std::string algebraic_variation);
   void make_moves(std::vector<std::string> algebraic_moves);
   void make_move(const Move& m);
 
-  boost::optional<ColoredPiece> colored_piece_at(squares::Index square);
+  boost::optional<ColoredPiece> colored_piece_at(squares::Index square) const;
   Piece moving_piece(const Move& move, const Halfboard& us) const;
   bool leaves_king_in_check(const Move& m) const;
   void make_move_on_their_halfboard (const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
@@ -86,20 +80,7 @@ public:
   void compute_their_attacks(Bitboard& their_attacks);
   void compute_hash(Hash& hash);
 
-  bool drawn_by_50();
-  bool our_king_in_check();
-  boost::optional<Color> winner();
-};
-
-class AlgebraicUnderdeterminedException : public std::runtime_error {
-public:
-  AlgebraicUnderdeterminedException(std::string message)
-  : std::runtime_error(message)
-  {}
-};
-class AlgebraicOverdeterminedException : public std::runtime_error {
-public:
-  AlgebraicOverdeterminedException(std::string message)
-  : std::runtime_error(message)
-  {}
+  bool drawn_by_50() const;
+  bool our_king_in_check() const;
+  boost::optional<Color> winner() const;
 };

@@ -13,6 +13,7 @@
 #include "move_generation.hpp"
 #include "hash.hpp"
 #include "mcts_agent.hpp"
+#include "notation.hpp"
 
 // NOTE: evaluates arguments twice
 #define BOOST_CHECK_BITBOARDS_EQUAL(a, b) \
@@ -231,16 +232,20 @@ BOOST_AUTO_TEST_CASE(algebraic_moves) {
 
   State state;
 
-  BOOST_CHECK(Move(e2, e4, move_types::double_push).matches_algebraic(NULL, NULL, e4, false, NULL));
-
-  state.make_moves("e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3 Ba5 d4 exd4 0-0 d3 Qb3 Qf6");
+  for (std::string word: words("e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3 Ba5 d4 exd4 0-0 d3 Qb3 Qf6")) {
+    Move move = notation::algebraic::parse(word, state);
+    state.make_move(move);
+  }
 
   BOOST_CHECK_BITBOARDS_EQUAL(state.occupancy[white], 0x000000001426e167);
   BOOST_CHECK_BITBOARDS_EQUAL(state.occupancy[black], 0xd5ef240100080000);
 
-  state.make_moves("e5 Qg6 Re1 Nge7 Ba3 b5 Qxb5 Rb8 Qa4 Bb6 Nbd2 Bb7 Ne4 Qf5 "
-                   "Bxd3 Qh5 Nf6+ gxf6 exf6 Rg8 Rad1 Qxf3 Rxe7+ Nxe7 Qxd7+ "
-                   "Kxd7 Bf5+ Ke8 Bd7+ Kf8");
+  for (std::string word: words("e5 Qg6 Re1 Nge7 Ba3 b5 Qxb5 Rb8 Qa4 Bb6 Nbd2 Bb7 Ne4 Qf5 "
+                               "Bxd3 Qh5 Nf6+ gxf6 exf6 Rg8 Rad1 Qxf3 Rxe7+ Nxe7 Qxd7+ "
+                               "Kxd7 Bf5+ Ke8 Bd7+ Kf8")) {
+    Move move = notation::algebraic::parse(word, state);
+    state.make_move(move);
+  }
 
   BOOST_CHECK_BITBOARDS_EQUAL(state.board[white][pawn],   0x000020000004e100);
   BOOST_CHECK_BITBOARDS_EQUAL(state.board[white][knight], 0x0000000000000000);
@@ -347,7 +352,7 @@ BOOST_AUTO_TEST_CASE(regression1) {
   Move illegal_move(45776);
 
   State state;
-  state.make_moves("c3");
+  state.make_move(notation::algebraic::parse("c3", state));
   for (Move move: trail) {
 //    std::cout << state;
 //    std::cout << move << std::endl;
@@ -355,4 +360,12 @@ BOOST_AUTO_TEST_CASE(regression1) {
   }
 
   BOOST_CHECK(state.leaves_king_in_check(illegal_move));
+}
+
+BOOST_AUTO_TEST_CASE(regression2) {
+  State state("RNB1KB1R/PPPQNPPP/8/1b1PP3/p3p3/5p2/1ppp2pp/rnbqk1nr w KQkq a6 0 0");
+  for (std::string word: words("d4e5 b7b6 c2c4 a8a7 e2g3 f6e5 d2c3 b4f8 e1d2 d8e7 d2c2 c7c6 a2a3 e7e6 f2f3 f8e7 c1d2 c8a6 b2b4 e6h6 h2h3 a6c8 c2b3 h6e3 c3d3 e7f6 b4a5 f6e7 b3a4 e3f2 g3f5 f2c5 d3e2 c5f2 f5h6 f2g2 h3h4 e7h4 d2e1 a7a8 a5a6 b8a6 c4c5 b6b5 e2b5 a6b8 a4b3 a8a3 b3c4 h4g5 f1d3 g5h6 d3c2 d7d5 c5d6")) {
+    Move move = notation::coordinate::parse(word, state);
+    state.make_move(move);
+  }
 }
