@@ -73,11 +73,11 @@ Move notation::coordinate::parse(std::string string, const State& state) {
   boost::smatch m;
   if (!boost::regex_match(string, m, regex))
     throw std::runtime_error(str(boost::format("can't parse algebraic move: %1%") % string));
-  squares::Index source = squares::by_keyword(std::string(m[0].first, m[0].second));
-  squares::Index target = squares::by_keyword(std::string(m[1].first, m[1].second));
+  squares::Index source = squares::by_keyword(std::string(m[1].first, m[1].second));
+  squares::Index target = squares::by_keyword(std::string(m[2].first, m[2].second));
   boost::optional<Piece> promotion;
-  if (m[2].matched)
-    promotion = pieces::type_from_name(std::string(m[2].first, m[2].second));
+  if (m[3].matched)
+    promotion = pieces::type_from_name(std::string(m[3].first, m[3].second));
 
   for (Move move: state.moves()) {
     if (move.source() != source)
@@ -89,6 +89,8 @@ Move notation::coordinate::parse(std::string string, const State& state) {
     return move;
   }
 
+  std::cerr << "no match for coordinate move " << string << " in state:" << std::endl;
+  std::cerr << state << std::endl;
   throw std::runtime_error(str(boost::format("no match for coordinate move: %1%") % string));
 }
 
