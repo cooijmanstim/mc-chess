@@ -315,11 +315,12 @@ BOOST_AUTO_TEST_CASE(move_randomly) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(mcts) {
-  State state;
-  MCTSAgent agent;
-  auto decision = agent.start_decision(state);
-  decision.get();
+BOOST_AUTO_TEST_CASE(regression2) {
+  State state("rnbqk1nr/1ppp2pp/5p2/p3p3/1b1PP3/8/PPPQNPPP/RNB1KB1R w KQkq a6 0 0");
+  for (std::string word: words("d4e5 b7b6 c2c4 a8a7 e2g3 f6e5 d2c3 b4f8 e1d2 d8e7 d2c2 c7c6 a2a3 e7e6 f2f3 f8e7 c1d2 c8a6 b2b4 e6h6 h2h3 a6c8 c2b3 h6e3 c3d3 e7f6 b4a5 f6e7 b3a4 e3f2 g3f5 f2c5 d3e2 c5f2 f5h6 f2g2 h3h4 e7h4 d2e1 a7a8 a5a6 b8a6 c4c5 b6b5 e2b5 a6b8 a4b3 a8a3 b3c4 h4g5 f1d3 g5h6 d3c2 d7d5 c5d6")) {
+    Move move = notation::coordinate::parse(word, state);
+    state.make_move(move);
+  }
 }
 
 BOOST_AUTO_TEST_CASE(regression1) {
@@ -362,10 +363,10 @@ BOOST_AUTO_TEST_CASE(regression1) {
   BOOST_CHECK(state.leaves_king_in_check(illegal_move));
 }
 
-BOOST_AUTO_TEST_CASE(regression2) {
-  State state("RNB1KB1R/PPPQNPPP/8/1b1PP3/p3p3/5p2/1ppp2pp/rnbqk1nr w KQkq a6 0 0");
-  for (std::string word: words("d4e5 b7b6 c2c4 a8a7 e2g3 f6e5 d2c3 b4f8 e1d2 d8e7 d2c2 c7c6 a2a3 e7e6 f2f3 f8e7 c1d2 c8a6 b2b4 e6h6 h2h3 a6c8 c2b3 h6e3 c3d3 e7f6 b4a5 f6e7 b3a4 e3f2 g3f5 f2c5 d3e2 c5f2 f5h6 f2g2 h3h4 e7h4 d2e1 a7a8 a5a6 b8a6 c4c5 b6b5 e2b5 a6b8 a4b3 a8a3 b3c4 h4g5 f1d3 g5h6 d3c2 d7d5 c5d6")) {
-    Move move = notation::coordinate::parse(word, state);
-    state.make_move(move);
-  }
+BOOST_AUTO_TEST_CASE(mcts) {
+  State state;
+  MCTSAgent agent;
+  auto decision = agent.start_decision(state);
+  decision.get();
 }
+
