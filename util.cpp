@@ -22,12 +22,6 @@ void print_backtrace() {
   backtrace_symbols_fd(array, size, STDERR_FILENO);
 }
 
-void debuggable_abort() {
-  print_backtrace();
-  std::cerr << "Use gdb -p " << getpid() << " to investigate." << std::endl;
-  sleep_forever();
-}
-
 void sleep_forever() {
   while (true)
     boost::this_thread::sleep_for(boost::chrono::hours(1000));

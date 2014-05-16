@@ -1,6 +1,4 @@
 #include <ios>
-#include <thread>
-#include <chrono>
 #include <stack>
 
 #include <boost/algorithm/string.hpp>
@@ -76,7 +74,7 @@ const std::vector<std::string> features = {
 void interface_with(std::istream& in, std::ostream& out) {
   out.setf(std::ios::unitbuf);
 
-  bool debug = true;
+  bool debug = false;
   
   Game game;
   MCTSAgent agent;

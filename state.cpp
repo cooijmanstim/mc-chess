@@ -2,9 +2,9 @@
 #include <cctype>
 
 #include <boost/lexical_cast.hpp>
+#include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string_regex.hpp>
-#include <boost/format.hpp>
 
 #include "state.hpp"
 #include "direction.hpp"
@@ -313,7 +313,7 @@ Piece State::moving_piece(const Move& move, const Halfboard& us) const {
   }
   std::cerr << "State::moving_piece: no match for move " << move << " in state: " << std::endl;
   std::cerr << *this << std::endl;
-  debuggable_abort();
+  print_backtrace();
   throw std::runtime_error("no such piece");
 }
 
@@ -528,7 +528,7 @@ void State::make_move(const Move& move) {
   if (our_king_in_check()) {
     std::cerr << "State::make_move: king left in check after " << move << " in state: " << std::endl;
     std::cerr << *this << std::endl;
-    debuggable_abort();
+    print_backtrace();
     throw std::runtime_error("king left in check after move");
   }
 #endif

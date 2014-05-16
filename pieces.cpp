@@ -26,7 +26,7 @@ std::map<std::string, Piece> by_name = {
 
 Piece pieces::type_from_name(std::string name) {
   try {
-    return by_name[name];
+    return by_name.at(name);
   } catch (std::out_of_range& e) {
     throw std::invalid_argument(str(boost::format("unknown piece name: %1%") % name));
   }

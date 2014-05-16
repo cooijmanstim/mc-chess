@@ -8,7 +8,6 @@ template <typename T, int M, int N, int O> using array3d = std::array<std::array
 
 void print_backtrace();
 
-void debuggable_abort();
 void sleep_forever();
 
 #include <vector>
