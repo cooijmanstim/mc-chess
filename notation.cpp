@@ -33,7 +33,7 @@ Move notation::algebraic::parse(std::string string, const State& state) {
     boost::optional<Piece> promotion;
     if (m[7].matched) promotion = pieces::type_from_name(std::string(m[8].first, m[8].second));
 
-    predicate = [&](const Move& move) {
+    predicate = [=](const Move& move) {
       auto source_piece = state.colored_piece_at(move.source());
       if (!source_piece || *source_piece != ColoredPiece(state.us, piece))
         return false;
