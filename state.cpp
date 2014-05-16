@@ -5,6 +5,7 @@
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string_regex.hpp>
+#include <boost/range/adaptor/reversed.hpp>
 
 #include "state.hpp"
 #include "direction.hpp"
@@ -55,7 +56,7 @@ void State::set_initial_configuration() {
 std::string State::dump_fen() {
   std::stringstream ss;
   auto square = std::begin(squares::indices);
-  for (ranks::Index rank: ranks::indices) {
+  for (ranks::Index rank: boost::adaptors::reverse(ranks::indices)) {
     size_t empty_count = 0;
     for (files::Index file: files::indices) {
       boost::optional<ColoredPiece> colored_piece = colored_piece_at(*square);
