@@ -540,11 +540,11 @@ void State::make_move(const Move& move) {
   State prior_state(*this);
 #endif
 
-  update_castling_rights       (move, piece, source, target, castling_rights, hash);
-  update_en_passant_square     (move, piece, source, target, en_passant_square, hash);
   make_move_on_our_halfboard   (move, piece, source, target, board[us], hash);
   make_move_on_their_halfboard (move, piece, source, target, board[them], hash);
   make_move_on_occupancy       (move, piece, source, target, occupancy, hash);
+  update_en_passant_square     (move, piece, source, target, en_passant_square, hash);
+  update_castling_rights       (move, piece, source, target, castling_rights, hash);
 
 #ifdef MC_EXPENSIVE_RUNTIME_TESTS
   compute_their_attacks();
