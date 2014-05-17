@@ -402,14 +402,30 @@ void State::make_move_on_their_halfboard(const Move& move, const Piece piece, co
       their_halfboard[pieces::pawn] &= ~capture_target;
       toggle(hash, them, pieces::pawn, squares::index(capture_target));
     } else {
+      // if we need speed, break out of the loop as soon as we find the piece
+      // we're looking for.  otherwise keep going to test the assumption that
+      // exactly one piece was there.
+#ifdef MC_EXPENSIVE_RUNTIME_TESTS
+      Halfboard their_prior_halfboard = Halfboard(their_halfboard);
+      bool found = false;
+#endif
       for (Piece capturee: pieces::values) {
         if (their_halfboard[capturee] & target) {
+#ifdef MC_EXPENSIVE_RUNTIME_TESTS
+          assert(!found /* no more than on piece on this square? */);
+          found = true;
+#endif
           assert(capturee != pieces::king);
           their_halfboard[capturee] &= ~target;
           toggle(hash, them, capturee, squares::index(target));
+#ifndef MC_EXPENSIVE_RUNTIME_TESTS
           break;
+#endif
         }
       }
+#ifdef MC_EXPENSIVE_RUNTIME_TESTS
+      assert(found == true /* at least one piece on this square? */);
+#endif
     }
     break;
   case move_types::double_push:
@@ -431,6 +447,8 @@ void State::make_move_on_our_halfboard(const Move& move, const Piece piece, cons
                                        Hash& hash) const {
   using namespace pieces;
   using hashes::toggle;
+
+  assert(our_halfboard[piece] & source);
 
   our_halfboard[piece] &= ~source; toggle(hash, us, piece, move.source());
   our_halfboard[piece] |=  target; toggle(hash, us, piece, move.target());
@@ -518,16 +536,22 @@ void State::make_move(const Move& move) {
   Halfboard& our_halfboard = board[us];
   Piece piece = moving_piece(move, our_halfboard);
 
+#ifdef MC_EXPENSIVE_RUNTIME_TESTS
+  State prior_state(*this);
+#endif
+
   update_castling_rights       (move, piece, source, target, castling_rights, hash);
   update_en_passant_square     (move, piece, source, target, en_passant_square, hash);
   make_move_on_our_halfboard   (move, piece, source, target, board[us], hash);
   make_move_on_their_halfboard (move, piece, source, target, board[them], hash);
   make_move_on_occupancy       (move, piece, source, target, occupancy, hash);
 
-#ifndef NDEBUG
+#ifdef MC_EXPENSIVE_RUNTIME_TESTS
   compute_their_attacks();
   if (our_king_in_check()) {
-    std::cerr << "State::make_move: king left in check after " << move << " in state: " << std::endl;
+    std::cerr << "State::make_move: king left in check after " << move << " in state:" << std::endl;
+    std::cerr << prior_state << std::endl;
+    std::cerr << "state after move:" << std::endl;
     std::cerr << *this << std::endl;
     print_backtrace();
     throw std::runtime_error("king left in check after move");
