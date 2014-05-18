@@ -507,10 +507,16 @@ void State::make_move_on_occupancy(const Move& move, const Piece piece, const Bi
   case move_types::capturing_promotion_rook:
   case move_types::capturing_promotion_queen:
   case move_types::capture:
-    if (target == en_passant_square)
-      occupancy[them] &= ~(target >> directions::vertical);
-    else
-      occupancy[them] &= ~target;
+    {
+      Bitboard capture_target = target;
+      if (target == en_passant_square) {
+        capture_target = (us == colors::white
+                          ? target >> directions::vertical
+                          : target << directions::vertical);
+      }
+      assert(occupancy[them] & capture_target);
+      occupancy[them] &= ~capture_target;
+    }
     break;
   case move_types::castle_kingside:
   case move_types::castle_queenside:
