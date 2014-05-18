@@ -55,11 +55,11 @@ void State::set_initial_configuration() {
 
 std::string State::dump_fen() {
   std::stringstream ss;
-  auto square = std::begin(squares::indices);
   for (ranks::Index rank: boost::adaptors::reverse(ranks::indices)) {
     size_t empty_count = 0;
     for (files::Index file: files::indices) {
-      boost::optional<ColoredPiece> colored_piece = colored_piece_at(*square);
+      squares::Index square = squares::index(ranks::bitboard(rank) & files::bitboard(file));
+      boost::optional<ColoredPiece> colored_piece = colored_piece_at(square);
       if (colored_piece) {
         if (empty_count > 0) {
           ss << empty_count;
@@ -69,11 +69,10 @@ std::string State::dump_fen() {
       } else {
         empty_count++;
       }
-      square++;
     }
     if (empty_count > 0)
       ss << empty_count;
-    if (rank != ranks::_8)
+    if (rank != ranks::_1)
       ss << "/";
   }
   ss << " ";
