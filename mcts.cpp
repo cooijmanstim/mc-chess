@@ -65,7 +65,7 @@ FarNode Node::expand(State& state, boost::mt19937& generator) {
 }
 
 int Node::rollout(State& state, boost::mt19937& generator) {
-#if EXPENSIVE_RUNTIME_CHECKS
+#ifdef MC_EXPENSIVE_RUNTIME_TESTS
   State initial_state(state);
   std::vector<Move> move_history; // for debugging
 #endif
@@ -75,7 +75,7 @@ int Node::rollout(State& state, boost::mt19937& generator) {
     boost::optional<Move> move = state.random_move(generator);
     if (!move)
       break;
-#if EXPENSIVE_RUNTIME_CHECKS
+#ifdef MC_EXPENSIVE_RUNTIME_TESTS
     move_history.push_back(*move);
 #endif
     state.make_move(*move);
