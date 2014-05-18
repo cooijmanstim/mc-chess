@@ -64,9 +64,8 @@ FarNode Node::expand(State& state, boost::mt19937& generator) {
   }
 }
 
-#define ROLLOUT_TRACK_HISTORY 1
 int Node::rollout(State& state, boost::mt19937& generator) {
-#if ROLLOUT_TRACK_HISTORY
+#if EXPENSIVE_RUNTIME_CHECKS
   State initial_state(state);
   std::vector<Move> move_history; // for debugging
 #endif
@@ -76,7 +75,7 @@ int Node::rollout(State& state, boost::mt19937& generator) {
     boost::optional<Move> move = state.random_move(generator);
     if (!move)
       break;
-#if ROLLOUT_TRACK_HISTORY
+#if EXPENSIVE_RUNTIME_CHECKS
     move_history.push_back(*move);
 #endif
     state.make_move(*move);

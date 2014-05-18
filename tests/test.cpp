@@ -15,8 +15,6 @@
 #include "mcts_agent.hpp"
 #include "notation.hpp"
 
-#define MC_EXPENSIVE_RUNTIME_TESTS
-
 // NOTE: evaluates arguments twice
 #define BOOST_CHECK_BITBOARDS_EQUAL(a, b) \
   BOOST_CHECK_MESSAGE((a) == (b), boost::format("%|1$#x| != %|2$#x|") % (a) % (b));
