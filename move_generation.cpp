@@ -128,17 +128,25 @@ Bitboard moves::attacks(const Color us, const Bitboard occupancy, const Halfboar
     attacks |= knight_attacks(attackers[pieces::knight], ka);
 
   // TODO: dry up
-  squares::do_bits(attackers[pieces::bishop], [&attacks, &occupancy](squares::Index source) {
-      attacks |= bishop_attacks(occupancy, source);
-    });
+  Bitboard b;
 
-  squares::do_bits(attackers[pieces::rook], [&attacks, &occupancy](squares::Index source) {
-      attacks |= rook_attacks(occupancy, source);
-    });
+  b = attackers[pieces::bishop];
+  while (!bitboard::is_empty(b)) {
+    squares::Index source = static_cast<squares::Index>(bitboard::scan_forward_with_reset(b));
+    attacks |= bishop_attacks(occupancy, source);
+  }
 
-  squares::do_bits(attackers[pieces::queen], [&attacks, &occupancy](squares::Index source) {
-      attacks |= queen_attacks(occupancy, source);
-    });
+  b = attackers[pieces::rook];
+  while (!bitboard::is_empty(b)) {
+    squares::Index source = static_cast<squares::Index>(bitboard::scan_forward_with_reset(b));
+    attacks |= rook_attacks(occupancy, source);
+  }
+
+  b = attackers[pieces::queen];
+  while (!bitboard::is_empty(b)) {
+    squares::Index source = static_cast<squares::Index>(bitboard::scan_forward_with_reset(b));
+    attacks |= queen_attacks(occupancy, source);
+  }
 
   return attacks | king_attacks(attackers[pieces::king]);
 }
@@ -149,11 +157,12 @@ enum Relativity {
 
 // Generate moves from the set of targets.  `source' is the index of the source square, either
 // relative to the target or absolute.  The moves are added to the `moves' vector.
-void moves_from_targets(std::vector<Move>& moves, const Bitboard targets, const int source_offset, const Relativity relative, const MoveType type) {
-  squares::do_bits(targets, [&moves, &relative, &source_offset, &type](squares::Index target) {
-      squares::Index source = static_cast<squares::Index>(relative*target + source_offset);
-      moves.push_back(Move(source, target, type));
-    });
+void moves_from_targets(std::vector<Move>& moves, Bitboard targets, const int source_offset, const Relativity relative, const MoveType type) {
+  while (!bitboard::is_empty(targets)) {
+    squares::Index target = static_cast<squares::Index>(bitboard::scan_forward_with_reset(targets));
+    squares::Index source = static_cast<squares::Index>(relative*target + source_offset);
+    moves.push_back(Move(source, target, type));
+  }
 }
 
 // Generate normal and capturing moves from the set of attacks.
@@ -222,35 +231,38 @@ void moves::knight(std::vector<Move>& moves,
 
 void moves::bishop(std::vector<Move>& moves,
                    const Color us, const Color them,
-                   const Bitboard bishop, const Occupancy& occupancy,
+                   Bitboard bishop, const Occupancy& occupancy,
                    const Bitboard en_passant_square) {
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
-  squares::do_bits(bishop, [&moves, &us, &them, &occupancy, &flat_occupancy](squares::Index source) {
-      moves_from_attacks(moves, bishop_attacks(flat_occupancy, source), occupancy[us], occupancy[them], source, absolute);
-    });
+  while (!bitboard::is_empty(bishop)) {
+    squares::Index source = static_cast<squares::Index>(bitboard::scan_forward_with_reset(bishop));
+    moves_from_attacks(moves, bishop_attacks(flat_occupancy, source), occupancy[us], occupancy[them], source, absolute);
+  }
 }
 
 void moves::rook(std::vector<Move>& moves,
                  const Color us, const Color them,
-                 const Bitboard rook, const Occupancy& occupancy,
+                 Bitboard rook, const Occupancy& occupancy,
                  const Bitboard en_passant_square) {
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
-  squares::do_bits(rook, [&moves, &us, &them, &occupancy, &flat_occupancy](squares::Index source) {
-      moves_from_attacks(moves, rook_attacks(flat_occupancy, source), occupancy[us], occupancy[them], source, absolute);
-    });
+  while (!bitboard::is_empty(rook)) {
+    squares::Index source = static_cast<squares::Index>(bitboard::scan_forward_with_reset(rook));
+    moves_from_attacks(moves, rook_attacks(flat_occupancy, source), occupancy[us], occupancy[them], source, absolute);
+  }
 }
 
 void moves::queen(std::vector<Move>& moves,
                   const Color us, const Color them,
-                  const Bitboard queen, const Occupancy& occupancy,
+                  Bitboard queen, const Occupancy& occupancy,
                   const Bitboard en_passant_square) {
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
-  squares::do_bits(queen, [&moves, &us, &them, &occupancy, &flat_occupancy](squares::Index source) {
-      moves_from_attacks(moves, queen_attacks(flat_occupancy, source), occupancy[us], occupancy[them], source, absolute);
-    });
+  while (!bitboard::is_empty(queen)) {
+    squares::Index source = static_cast<squares::Index>(bitboard::scan_forward_with_reset(queen));
+    moves_from_attacks(moves, queen_attacks(flat_occupancy, source), occupancy[us], occupancy[them], source, absolute);
+  }
 }
 
 void moves::king(std::vector<Move>& moves,
