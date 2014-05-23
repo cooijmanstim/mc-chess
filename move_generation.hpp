@@ -48,12 +48,12 @@ namespace moves {
   
   Bitboard attacks(const Color, const Bitboard occupancy, const Halfboard& attackers);
 
-  void pawn  (std::vector<Move>& moves, const Color us, const Color them, const Bitboard pawn,   const Occupancy& occupancy, const Bitboard en_passant_square);
-  void knight(std::vector<Move>& moves, const Color us, const Color them, const Bitboard knight, const Occupancy& occupancy, const Bitboard en_passant_square);
-  void bishop(std::vector<Move>& moves, const Color us, const Color them, const Bitboard bishop, const Occupancy& occupancy, const Bitboard en_passant_square);
-  void rook  (std::vector<Move>& moves, const Color us, const Color them, const Bitboard rook,   const Occupancy& occupancy, const Bitboard en_passant_square);
-  void queen (std::vector<Move>& moves, const Color us, const Color them, const Bitboard queen,  const Occupancy& occupancy, const Bitboard en_passant_square);
-  void king  (std::vector<Move>& moves, const Color us, const Color them, const Bitboard king,   const Occupancy& occupancy, const Bitboard en_passant_square);
+  void pawn  (std::vector<Move>& moves, const Color us, const Color them, const Bitboard pawn,   const Occupancy& occupancy, const Bitboard en_passant_square, const Bitboard their_king);
+  void knight(std::vector<Move>& moves, const Color us, const Color them, const Bitboard knight, const Occupancy& occupancy, const Bitboard en_passant_square, const Bitboard their_king);
+  void bishop(std::vector<Move>& moves, const Color us, const Color them, const Bitboard bishop, const Occupancy& occupancy, const Bitboard en_passant_square, const Bitboard their_king);
+  void rook  (std::vector<Move>& moves, const Color us, const Color them, const Bitboard rook,   const Occupancy& occupancy, const Bitboard en_passant_square, const Bitboard their_king);
+  void queen (std::vector<Move>& moves, const Color us, const Color them, const Bitboard queen,  const Occupancy& occupancy, const Bitboard en_passant_square, const Bitboard their_king);
+  void king  (std::vector<Move>& moves, const Color us, const Color them, const Bitboard king,   const Occupancy& occupancy, const Bitboard en_passant_square, const Bitboard their_king);
   void castle(std::vector<Move>& moves, const Color us, const Color them,
               const Occupancy& occupancy,
               const Bitboard their_attacks,

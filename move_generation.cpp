@@ -22,6 +22,7 @@ Bitboard moves::slides(const Bitboard occupancy, const Bitboard piece, const Bit
   return forward;
 }
 
+// FIXME: why ranks index by ref?
 Bitboard rank_onto_a1h8(Bitboard b, const ranks::Index& rank) {
   // put the bits for the relevant rank into LSB
   b = (b >> rank * directions::vertical) & 0xff;
@@ -178,7 +179,8 @@ void moves_from_attacks(std::vector<Move>& moves, const Bitboard attacks,
 void moves::pawn(std::vector<Move>& moves,
                  const Color us, const Color them,
                  const Bitboard pawn, const Occupancy& occupancy,
-                 const Bitboard en_passant_square) {
+                 const Bitboard en_passant_square,
+                 const Bitboard their_king) {
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
 
@@ -208,6 +210,14 @@ void moves::pawn(std::vector<Move>& moves,
     direction = pd.leftshift - pd.rightshift + pa.leftshift - pa.rightshift;
 
     Bitboard capture_targets = pawn_attacks(pawn, pd, pa) & (occupancy[them] | en_passant_square);
+
+    if (capture_targets & their_king) {
+      squares::Index target = squares::index(capture_targets & their_king);
+      squares::Index source = static_cast<squares::Index>(target - direction);
+      moves = {Move(source, target, move_types::king_capture)};
+      return;
+    }
+
     moves_from_targets(moves, capture_targets & ~pd.promotion_rank, -direction, relative, move_types::capture);
     promotion_targets = capture_targets & pd.promotion_rank;
     if (promotion_targets != 0) {
@@ -222,53 +232,91 @@ void moves::pawn(std::vector<Move>& moves,
 void moves::knight(std::vector<Move>& moves,
                    const Color us, const Color them,
                    const Bitboard knight, const Occupancy& occupancy,
-                   const Bitboard en_passant_square) {
+                   const Bitboard en_passant_square,
+                   const Bitboard their_king) {
   for (KnightAttackType ka: get_knight_attack_types()) {
-    moves_from_attacks(moves, knight_attacks(knight, ka),
-                       occupancy[us], occupancy[them], -(ka.leftshift - ka.rightshift), relative);
+    int direction = -(ka.leftshift - ka.rightshift);
+    Bitboard attacks = knight_attacks(knight, ka);
+
+    if (attacks & their_king) {
+      squares::Index target = squares::index(attacks & their_king);
+      squares::Index source = static_cast<squares::Index>(target + direction);
+      moves = {Move(source, target, move_types::king_capture)};
+      return;
+    }
+
+    moves_from_attacks(moves, attacks, occupancy[us], occupancy[them], direction, relative);
   }
 }
 
 void moves::bishop(std::vector<Move>& moves,
                    const Color us, const Color them,
                    Bitboard bishop, const Occupancy& occupancy,
-                   const Bitboard en_passant_square) {
+                   const Bitboard en_passant_square,
+                   const Bitboard their_king) {
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
   while (!bitboard::is_empty(bishop)) {
     squares::Index source = static_cast<squares::Index>(bitboard::scan_forward_with_reset(bishop));
-    moves_from_attacks(moves, bishop_attacks(flat_occupancy, source), occupancy[us], occupancy[them], source, absolute);
+    Bitboard attacks = bishop_attacks(flat_occupancy, source);
+
+    if (attacks & their_king) {
+      squares::Index target = squares::index(attacks & their_king);
+      moves = {Move(source, target, move_types::king_capture)};
+      return;
+    }
+
+    moves_from_attacks(moves, attacks, occupancy[us], occupancy[them], source, absolute);
   }
 }
 
 void moves::rook(std::vector<Move>& moves,
                  const Color us, const Color them,
                  Bitboard rook, const Occupancy& occupancy,
-                 const Bitboard en_passant_square) {
+                 const Bitboard en_passant_square,
+                 const Bitboard their_king) {
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
   while (!bitboard::is_empty(rook)) {
     squares::Index source = static_cast<squares::Index>(bitboard::scan_forward_with_reset(rook));
-    moves_from_attacks(moves, rook_attacks(flat_occupancy, source), occupancy[us], occupancy[them], source, absolute);
+    Bitboard attacks = rook_attacks(flat_occupancy, source);
+
+    if (attacks & their_king) {
+      squares::Index target = squares::index(attacks & their_king);
+      moves = {Move(source, target, move_types::king_capture)};
+      return;
+    }
+
+    moves_from_attacks(moves, attacks, occupancy[us], occupancy[them], source, absolute);
   }
 }
 
 void moves::queen(std::vector<Move>& moves,
                   const Color us, const Color them,
                   Bitboard queen, const Occupancy& occupancy,
-                  const Bitboard en_passant_square) {
+                  const Bitboard en_passant_square,
+                  const Bitboard their_king) {
   Bitboard flat_occupancy;
   board::flatten(occupancy, flat_occupancy);
   while (!bitboard::is_empty(queen)) {
     squares::Index source = static_cast<squares::Index>(bitboard::scan_forward_with_reset(queen));
-    moves_from_attacks(moves, queen_attacks(flat_occupancy, source), occupancy[us], occupancy[them], source, absolute);
+    Bitboard attacks = queen_attacks(flat_occupancy, source);
+
+    if (attacks & their_king) {
+      squares::Index target = squares::index(attacks & their_king);
+      moves = {Move(source, target, move_types::king_capture)};
+      return;
+    }
+
+    moves_from_attacks(moves, attacks, occupancy[us], occupancy[them], source, absolute);
   }
 }
 
 void moves::king(std::vector<Move>& moves,
                  const Color us, const Color them,
                  const Bitboard king, const Occupancy& occupancy,
-                 const Bitboard en_passant_square) {
+                 const Bitboard en_passant_square,
+                 const Bitboard their_king) {
   moves_from_attacks(moves, king_attacks(king), occupancy[us], occupancy[them], squares::index(king), absolute);
 }
 
@@ -292,13 +340,27 @@ void moves::castle(std::vector<Move>& moves,
   }
 }
 
+// generates pseudolegal moves.  moves that leave the king in check are
+// generated.  the opponent's only move will be to capture the king.
 void moves::moves(std::vector<Move>& moves,
                   const Color us, const Color them,
                   const Board& board, const Occupancy& occupancy,
                   const Bitboard their_attacks,
                   const Bitboard en_passant_square,
                   const CastlingRights& castling_rights) {
-#define GENERATE_MOVES(piece) moves::piece(moves, us, them, board[us][pieces::piece], occupancy, en_passant_square)
+  // if our king has been captured, game over
+  if (bitboard::is_empty(board[us][pieces::king]))
+    return;
+
+  Bitboard their_king = board[them][pieces::king];
+  // if any of the piecewise move generators detects that the opponent's king
+  // can be captured, it will return with the moves vector containing only the
+  // king capture.
+#define GENERATE_MOVES(piece)                                                                        \
+  moves::piece(moves, us, them, board[us][pieces::piece], occupancy, en_passant_square, their_king); \
+  if (moves.size() == 1 && moves[0].is_king_capture())                                                                    \
+    return;
+  
   GENERATE_MOVES(pawn);
   GENERATE_MOVES(knight);
   GENERATE_MOVES(bishop);

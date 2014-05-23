@@ -8,6 +8,7 @@ namespace move_types {
     _(castle_kingside) \
     _(castle_queenside) \
     _(capture) \
+    _(king_capture) \
     _(promotion_knight) \
     _(promotion_bishop) \
     _(promotion_rook) \

@@ -243,29 +243,6 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
   return o;
 }
 
-bool State::leaves_king_in_check(const Move& move) const {
-  const Bitboard source = squares::bitboard(move.source()),
-                 target = squares::bitboard(move.target());
-
-  Bitboard king = board[us][pieces::king];
-  // king move
-  if (source & king)
-    king = target;
-
-  // only occupancy and their halfboard make a difference
-  Occupancy occupancy(this->occupancy);
-  Halfboard their_halfboard(board[them]);
-
-  Hash hash; // we don't care about what happens to this
-  Piece piece = moving_piece(move, board[us]);
-  make_move_on_occupancy(move, piece, source, target, occupancy, hash);
-  make_move_on_their_halfboard(move, piece, source, target, their_halfboard, hash);
-
-  Bitboard flat_occupancy;
-  board::flatten(occupancy, flat_occupancy);
-  return moves::attacks(them, flat_occupancy, their_halfboard) & king;
-}
-
 std::vector<Move> State::moves() const {
   // TODO: maybe reserve()
   std::vector<Move> moves;
@@ -273,16 +250,6 @@ std::vector<Move> State::moves() const {
                board, occupancy,
                their_attacks, en_passant_square,
                castling_rights);
-
-  // filter out moves that would leave the king in check
-  for (auto it = moves.begin(); it != moves.end(); ) {
-    if (leaves_king_in_check(*it)) {
-      it = moves.erase(it);
-    } else {
-      it++;
-    }
-  }
-
   return moves;
 }
 
@@ -362,6 +329,7 @@ void State::update_en_passant_square(const Move& move, const Piece piece, const 
     hash ^= hashes::en_passant(en_passant_square);
     break;
   case move_types::capture:
+  case move_types::king_capture:
   case move_types::castle_kingside:
   case move_types::castle_queenside:
   case move_types::promotion_knight:
@@ -391,6 +359,7 @@ void State::make_move_on_their_halfboard(const Move& move, const Piece piece, co
   case move_types::capturing_promotion_rook:
   case move_types::capturing_promotion_queen:
   case move_types::capture:
+  case move_types::king_capture:
     if (target == en_passant_square) {
       assert(piece == pieces::pawn);
       // the captured pawn is in front of the en_passant_square
@@ -414,7 +383,6 @@ void State::make_move_on_their_halfboard(const Move& move, const Piece piece, co
           assert(!found /* no more than on piece on this square? */);
           found = true;
 #endif
-          assert(capturee != pieces::king);
           their_halfboard[capturee] &= ~target;
           toggle(hash, them, capturee, squares::index(target));
 #ifndef MC_EXPENSIVE_RUNTIME_TESTS
@@ -487,6 +455,7 @@ void State::make_move_on_our_halfboard(const Move& move, const Piece piece, cons
     our_halfboard[queen] |=  target; toggle(hash, us, queen, move.target());
     break;
   case move_types::capture:
+  case move_types::king_capture:
   case move_types::double_push:
   case move_types::normal:
     break;
@@ -507,6 +476,7 @@ void State::make_move_on_occupancy(const Move& move, const Piece piece, const Bi
   case move_types::capturing_promotion_rook:
   case move_types::capturing_promotion_queen:
   case move_types::capture:
+  case move_types::king_capture:
     {
       Bitboard capture_target = target;
       if (target == en_passant_square) {
@@ -550,18 +520,6 @@ void State::make_move(const Move& move) {
   make_move_on_occupancy       (move, piece, source, target, occupancy, hash);
   update_en_passant_square     (move, piece, source, target, en_passant_square, hash);
   update_castling_rights       (move, piece, source, target, castling_rights, hash);
-
-#ifdef MC_EXPENSIVE_RUNTIME_TESTS
-  compute_their_attacks();
-  if (our_king_in_check()) {
-    std::cerr << "State::make_move: king left in check after " << move << " in state:" << std::endl;
-    std::cerr << prior_state << std::endl;
-    std::cerr << "state after move:" << std::endl;
-    std::cerr << *this << std::endl;
-    print_backtrace();
-    throw std::runtime_error("king left in check after move");
-  }
-#endif
 
   std::swap(us, them);
   hash ^= hashes::black_to_move();

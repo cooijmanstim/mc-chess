@@ -56,7 +56,6 @@ public:
 
   boost::optional<ColoredPiece> colored_piece_at(squares::Index square) const;
   Piece moving_piece(const Move& move, const Halfboard& us) const;
-  bool leaves_king_in_check(const Move& m) const;
   void make_move_on_their_halfboard (const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
                                      Halfboard& their_halfboard,
                                      Hash& hash) const;

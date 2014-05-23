@@ -11,7 +11,7 @@ Move MCTSAgent::decide(const State& state) {
 boost::future<Move> MCTSAgent::start_decision(const State state) {
   return boost::async([state, this]() {
       mcts::FarNode tree = mcts::Node::create(0, boost::none, state);
-      for (int i = 0; i < 1000; i++) {
+      for (int i = 0; i < 5e4; i++) {
         tree->sample(state, generator);
         std::cerr << ".";
         std::cerr.flush();
