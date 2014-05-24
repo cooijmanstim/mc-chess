@@ -566,16 +566,14 @@ bool State::drawn_by_50() const {
   return halfmove_clock >= 50;
 }
 
-bool State::our_king_in_check() const {
-  return board[us][pieces::king] & their_attacks;
-}
-
 // NOTE: assumes game is over
 boost::optional<Color> State::winner() const {
   if (drawn_by_50())
     return boost::none;
   assert(moves().empty());
-  if (our_king_in_check())
-      return them;
+  if (bitboard::is_empty(board[us][pieces::king]))
+    return them;
+  else if (bitboard::is_empty(board[them][pieces::king]))
+    return us;
   return boost::none;
 }

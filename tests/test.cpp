@@ -371,6 +371,8 @@ BOOST_AUTO_TEST_CASE(king_capture) {
 
   moves = state.moves();
   BOOST_CHECK_MESSAGE(moves.empty(), "after king capture, state: " << state << " still has moves: " << moves);
+
+  BOOST_CHECK_EQUAL(state.winner(), colors::white);
 }
 
 BOOST_AUTO_TEST_CASE(mcts) {

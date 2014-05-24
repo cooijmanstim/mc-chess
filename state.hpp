@@ -70,6 +70,5 @@ public:
   void compute_hash(Hash& hash);
 
   bool drawn_by_50() const;
-  bool our_king_in_check() const;
   boost::optional<Color> winner() const;
 };
