@@ -50,8 +50,6 @@ public:
   std::vector<Move> moves() const;
   boost::optional<Move> random_move(boost::mt19937& generator) const;
 
-  void make_moves(std::string algebraic_variation);
-  void make_moves(std::vector<std::string> algebraic_moves);
   void make_move(const Move& m);
 
   boost::optional<ColoredPiece> colored_piece_at(squares::Index square) const;
