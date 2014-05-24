@@ -329,6 +329,50 @@ BOOST_AUTO_TEST_CASE(regression2) {
   state.make_move(notation::coordinate::parse("c5d6", state));
 }
 
+BOOST_AUTO_TEST_CASE(king_capture) {
+  using namespace squares;
+
+  State state("8/5B2/8/Q1pk4/8/8/PPP5/6K1 b - - 0 0");
+
+  std::set<Move> expected_moves;
+#define MV(from, to, type) expected_moves.emplace(from, to, type);
+  MV(c5, c4, move_types::normal); // leaves king in check
+  MV(d5, e5, move_types::normal);
+  MV(d5, e6, move_types::normal); // leaves king in check
+  MV(d5, d6, move_types::normal);
+  MV(d5, c6, move_types::normal);
+  MV(d5, c4, move_types::normal); // leaves king in check
+  MV(d5, d4, move_types::normal);
+  MV(d5, e4, move_types::normal);
+#undef MV
+
+  std::vector<Move> moves = state.moves();
+  std::set<Move> actual_moves(moves.begin(), moves.end());
+
+  std::set<Move> falsenegatives, falsepositives;
+  std::set_difference(expected_moves.begin(), expected_moves.end(),
+                      actual_moves.begin(), actual_moves.end(),
+                      std::inserter(falsenegatives, falsenegatives.begin()));
+  std::set_difference(actual_moves.begin(), actual_moves.end(),
+                      expected_moves.begin(), expected_moves.end(),
+                      std::inserter(falsepositives, falsepositives.begin()));
+  BOOST_CHECK_MESSAGE(falsenegatives.empty(), "legal moves not generated: " << falsenegatives);
+  BOOST_CHECK_MESSAGE(falsepositives.empty(), "illegal moves generated: " << falsepositives);
+
+  state.make_move(Move(c5, c4, move_types::normal)); // leaves king in check
+
+  moves = state.moves();
+  BOOST_CHECK_MESSAGE(std::all_of(std::begin(moves), std::end(moves), [&](Move const& move) {
+        return move.is_king_capture();
+      }),
+    "king capture not forced, state: " << state << " has non-king-capture move in " << moves);
+
+  state.make_move(moves[0]);
+
+  moves = state.moves();
+  BOOST_CHECK_MESSAGE(moves.empty(), "after king capture, state: " << state << " still has moves: " << moves);
+}
+
 BOOST_AUTO_TEST_CASE(mcts) {
   State state;
   MCTSAgent agent;
