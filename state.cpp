@@ -284,9 +284,7 @@ Piece State::moving_piece(const Move& move, const Halfboard& us) const {
   throw std::runtime_error("no such piece");
 }
 
-void State::update_castling_rights(const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
-                                   CastlingRights& castling_rights,
-                                   Hash& hash) const {
+void State::update_castling_rights(const Move& move, const Piece piece, const Bitboard source, const Bitboard target) {
   switch (piece) {
   case pieces::king:
     for (Castle castle: castles::values) {
@@ -315,9 +313,7 @@ void State::update_castling_rights(const Move& move, const Piece piece, const Bi
   }
 }
 
-void State::update_en_passant_square(const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
-                                     Bitboard& en_passant_square,
-                                     Hash& hash) const {
+void State::update_en_passant_square(const Move& move, const Piece piece, const Bitboard source, const Bitboard target) {
   if (en_passant_square)
     hash ^= hashes::en_passant(en_passant_square);
 
@@ -348,10 +344,10 @@ void State::update_en_passant_square(const Move& move, const Piece piece, const 
   }
 }
 
-void State::make_move_on_their_halfboard(const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
-                                         Halfboard& their_halfboard,
-                                         Hash& hash) const {
+void State::make_move_on_their_halfboard(const Move& move, const Piece piece, const Bitboard source, const Bitboard target) {
   using hashes::toggle;
+
+  Halfboard& their_halfboard = board[them];
 
   switch (move.type()) {
   case move_types::capturing_promotion_knight:
@@ -409,11 +405,11 @@ void State::make_move_on_their_halfboard(const Move& move, const Piece piece, co
   }
 }
 
-void State::make_move_on_our_halfboard(const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
-                                       Halfboard& our_halfboard,
-                                       Hash& hash) const {
+void State::make_move_on_our_halfboard(const Move& move, const Piece piece, const Bitboard source, const Bitboard target) {
   using namespace pieces;
   using hashes::toggle;
+
+  Halfboard& our_halfboard = board[us];
 
   assert(our_halfboard[piece] & source);
 
@@ -464,9 +460,7 @@ void State::make_move_on_our_halfboard(const Move& move, const Piece piece, cons
   }
 }
 
-void State::make_move_on_occupancy(const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
-                                   Occupancy& occupancy,
-                                   Hash& hash) const {
+void State::make_move_on_occupancy(const Move& move, const Piece piece, const Bitboard source, const Bitboard target) {
   occupancy[us] &= ~source;
   occupancy[us] |=  target;
 
@@ -508,18 +502,17 @@ void State::make_move_on_occupancy(const Move& move, const Piece piece, const Bi
 void State::make_move(const Move& move) {
   Bitboard source = squares::bitboard(move.source()),
            target = squares::bitboard(move.target());
-  Halfboard& our_halfboard = board[us];
-  Piece piece = moving_piece(move, our_halfboard);
+  Piece piece = moving_piece(move, board[us]);
 
 #ifdef MC_EXPENSIVE_RUNTIME_TESTS
   State prior_state(*this);
 #endif
 
-  make_move_on_our_halfboard   (move, piece, source, target, board[us], hash);
-  make_move_on_their_halfboard (move, piece, source, target, board[them], hash);
-  make_move_on_occupancy       (move, piece, source, target, occupancy, hash);
-  update_en_passant_square     (move, piece, source, target, en_passant_square, hash);
-  update_castling_rights       (move, piece, source, target, castling_rights, hash);
+  make_move_on_our_halfboard   (move, piece, source, target);
+  make_move_on_their_halfboard (move, piece, source, target);
+  make_move_on_occupancy       (move, piece, source, target);
+  update_en_passant_square     (move, piece, source, target);
+  update_castling_rights       (move, piece, source, target);
 
   std::swap(us, them);
   hash ^= hashes::black_to_move();

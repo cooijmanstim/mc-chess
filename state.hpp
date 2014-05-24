@@ -56,21 +56,11 @@ public:
 
   boost::optional<ColoredPiece> colored_piece_at(squares::Index square) const;
   Piece moving_piece(const Move& move, const Halfboard& us) const;
-  void make_move_on_their_halfboard (const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
-                                     Halfboard& their_halfboard,
-                                     Hash& hash) const;
-  void make_move_on_our_halfboard   (const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
-                                     Halfboard& our_halfboard,
-                                     Hash& hash) const;
-  void update_castling_rights       (const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
-                                     CastlingRights& castling_rights,
-                                     Hash& hash) const;
-  void update_en_passant_square     (const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
-                                     Bitboard& en_passant_square,
-                                     Hash& hash) const;
-  void make_move_on_occupancy       (const Move& move, const Piece piece, const Bitboard source, const Bitboard target,
-                                     Occupancy& occupancy,
-                                     Hash& hash) const;
+  void make_move_on_their_halfboard (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
+  void make_move_on_our_halfboard   (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
+  void update_castling_rights       (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
+  void update_en_passant_square     (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
+  void make_move_on_occupancy       (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
 
   void compute_occupancy();
   void compute_their_attacks();
