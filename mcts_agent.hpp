@@ -3,9 +3,11 @@
 #include <boost/random.hpp>
 
 #include "agent.hpp"
+#include "sometimes.hpp"
 
 class MCTSAgent : Agent {
   boost::mt19937 generator;
+  Sometimes<State> ponder_state;
 
 public:
   void start_pondering(const State state);
