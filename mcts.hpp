@@ -30,6 +30,7 @@ namespace mcts {
     int rollout(State& state, boost::mt19937& generator);
     void backprop(int result);
     void update(int result);
+    static int invert_result(int result);
     static float uct_score(FarNode child);
     static float most_visited(FarNode child);
     FarNode select_by(std::function<float(FarNode)>);

@@ -89,7 +89,7 @@ int Node::rollout(State& state, boost::mt19937& generator) {
 void Node::backprop(int result) {
   update(result);
   if (parent)
-    parent->update(1 - result);
+    parent->update(invert_result(result));
 }
 
 void Node::update(int result) {
@@ -124,3 +124,8 @@ Move Node::best_move() {
   assert(best_child->last_move);
   return *best_child->last_move;
 }
+
+int Node::invert_result(int result) {
+  return 1*result_factor - result;
+}
+
