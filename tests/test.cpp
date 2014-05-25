@@ -379,11 +379,12 @@ BOOST_AUTO_TEST_CASE(king_capture) {
 }
 
 BOOST_AUTO_TEST_CASE(mcts_speedtest) {
+  return;
   boost::mt19937 generator;
   State state;
   mcts::FarNode tree = mcts::Node::create(0, boost::none, state);
   auto then = std::chrono::high_resolution_clock::now();
-  for (int i = 0; i < 1e6; i++) {
+  for (int i = 0; i < 1e5; i++) {
     tree->sample(state, generator);
     if (i % 1024 == 0) {
       auto duration = std::chrono::high_resolution_clock::now() - then;
