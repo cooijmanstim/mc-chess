@@ -32,8 +32,10 @@ namespace mcts {
     void update(int result);
     static int invert_result(int result);
     static float uct_score(FarNode child);
+    static float winrate(FarNode child);
     static float most_visited(FarNode child);
     FarNode select_by(std::function<float(FarNode)>);
     Move best_move();
+    void print_evaluations();
   };
 }

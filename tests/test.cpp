@@ -1,17 +1,20 @@
 #include <iostream>
 #include <algorithm>
+#include <chrono>
 
 #define BOOST_TEST_MODULE test
 #include <boost/test/included/unit_test.hpp>
 #include <boost/algorithm/cxx11/all_of.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/format.hpp>
+#include <boost/random.hpp>
 
 #include "util.hpp"
 #include "direction.hpp"
 #include "state.hpp"
 #include "move_generation.hpp"
 #include "hash.hpp"
+#include "mcts.hpp"
 #include "mcts_agent.hpp"
 #include "notation.hpp"
 
@@ -375,10 +378,23 @@ BOOST_AUTO_TEST_CASE(king_capture) {
   BOOST_CHECK_EQUAL(state.winner(), colors::white);
 }
 
-BOOST_AUTO_TEST_CASE(mcts) {
+BOOST_AUTO_TEST_CASE(mcts_speedtest) {
+  boost::mt19937 generator;
+  State state;
+  mcts::FarNode tree = mcts::Node::create(0, boost::none, state);
+  auto then = std::chrono::high_resolution_clock::now();
+  for (int i = 0; i < 1e6; i++) {
+    tree->sample(state, generator);
+    if (i % 1024 == 0) {
+      auto duration = std::chrono::high_resolution_clock::now() - then;
+      std::cout << i << " " << duration.count() << std::endl;
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(mcts_agent) {
   State state;
   MCTSAgent agent;
   auto decision = agent.start_decision(state);
   decision.get();
 }
-

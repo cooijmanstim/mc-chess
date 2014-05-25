@@ -97,9 +97,13 @@ void Node::update(int result) {
   nvisits++;
 }
 
+float Node::winrate(FarNode child) {
+  return float(child->total_result) / result_factor / child->nvisits;
+}
+
 float Node::uct_score(FarNode child) {
   assert(child->parent);
-  return float(child->total_result) / result_factor / child->nvisits + sqrt(2 * log(child->parent->nvisits) / child->nvisits);
+  return winrate(child) + sqrt(2 * log(child->parent->nvisits) / child->nvisits);
 }
 
 float Node::most_visited(FarNode child) {
@@ -129,3 +133,8 @@ int Node::invert_result(int result) {
   return 1*result_factor - result;
 }
 
+void Node::print_evaluations() {
+  for (FarNode child: children) {
+    std::cout << child->nvisits << " " << winrate(child) << " " << uct_score(child);
+  }
+}
