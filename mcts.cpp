@@ -2,7 +2,26 @@
 
 using namespace mcts;
 
-Node::Node() {
+Node::Node(Node* parent, boost::optional<Move> move, const State& state)
+  : parent(parent),
+    children(nullptr),
+    child_count(0),
+    state_hash(state.hash),
+    last_move(move),
+    total_result(0),
+    visit_count(0)
+{
+}
+
+Node::~Node() {
+  if (children && child_count > 0) {
+    // this is thread-safe because children and child_count are constant
+    // after the node is expanded.
+    Node* end = children + child_count;
+    for (Node *child = children; child < end; child++)
+      child->~Node();
+    ::operator delete(children);
+  }
 }
 
 const double
@@ -14,61 +33,61 @@ Result Node::invert_result(Result result) {
   return 1 - result;
 }
 
-// use this to instantiate.  it ensures that there is always a shared_ptr
-// pointing to the newly created instance, so that shared_from_this() will
-// work.
-FarNode Node::create(FarNode parent, boost::optional<Move> move, const State& state) {
-  FarNode node = FarNode(new Node());
-  node->parent = parent;
-  node->state_hash = state.hash;
-  node->last_move = move;
-  node->last_player = colors::opposite(state.us);
-  node->unexplored_moves = state.moves();
-  node->total_result = 0;
-  node->nvisits = 0;
-  return node;
-}
-
-FarNode Node::add_child(Move move, const State& state) {
-  FarNode child = create(this->shared_from_this(), move, state);
-  auto position = std::find(this->unexplored_moves.begin(), this->unexplored_moves.end(), move);
-  if (position != this->unexplored_moves.end())
-    this->unexplored_moves.erase(position);
-  this->children.push_back(child);
-  return child;
+Node* Node::find_node(Hash state_hash, unsigned depth) {
+  if (this->state_hash == state_hash)
+    return this;
+  if (depth > 0) {
+    if (children && child_count > 0) {
+      Node* end = children + child_count;
+      for (Node* child = children; child < end; child++) {
+        Node* node = child->find_node(state_hash, depth - 1);
+        if (node)
+          return node;
+      }
+    }
+  }
+  return nullptr;
 }
 
 void Node::sample(State state, boost::mt19937& generator) {
   assert(state.hash == this->state_hash);
-  FarNode node = this->shared_from_this();
+  Node* node = this;
   node = node->select(state);
   node = node->expand(state, generator);
   double result = node->rollout(state, generator);
   node->backprop(result);
 }
 
-FarNode Node::select(State& state) {
-  if (unexplored_moves.empty() && !children.empty()) {
-    FarNode child = select_by(uct_score);
-    state.make_move(*child->last_move);
-    return child->select(state);
-  } else {
-    return this->shared_from_this();
+Node* Node::select(State& state) {
+  Node* node = this;
+  while (node->children && node->child_count != 0) {
+    node = node->select_by(uct_score);
+    assert(node);
+    state.make_move(*node->last_move);
   }
+  return node;
 }
 
-FarNode Node::expand(State& state, boost::mt19937& generator) {
-  if (!unexplored_moves.empty()) {
-    boost::uniform_int<> distribution(0, unexplored_moves.size() - 1);
-    Move move = unexplored_moves.at(distribution(generator));
-    state.make_move(move);
-    return add_child(move, state);
-  } else {
-    return this->shared_from_this();
+Node* Node::expand(State& state, boost::mt19937& generator) {
+  std::vector<Move> moves = state.moves();
+  Node* children = static_cast<Node*>(::operator new(moves.size() * sizeof(Node)));
+  for (size_t i = 0; i < moves.size(); i++) {
+    // to avoid having to keep track of unexplored_moves, and to ensure the
+    // children sequence is constant-size, construct all children right away.
+    // TODO: doing this requires copying state.  if we're copying state anyway,
+    // maybe might as well do a rollout for each of the children.
+    State child_state(state);
+    child_state.make_move(moves[i]);
+    new(&children[i]) Node(this, moves[i], child_state);
   }
+  this->child_count = moves.size();
+  this->children = children;
+  // select one of the children
+  return select(state);
 }
 
 Result Node::rollout(State& state, boost::mt19937& generator) {
+  Color initial_player = state.us;
 #ifdef MC_EXPENSIVE_RUNTIME_TESTS
   State initial_state(state);
   std::vector<Move> move_history; // for debugging
@@ -87,11 +106,11 @@ Result Node::rollout(State& state, boost::mt19937& generator) {
   boost::optional<Color> winner = state.winner();
   if (!winner)
     return draw_value;
-  return *winner == last_player ? win_value : loss_value;
+  return *winner == initial_player ? loss_value : win_value;
 }
 
 void Node::backprop(Result result) {
-  FarNode node = shared_from_this();
+  Node* node = this;
   do {
     node->update(result);
     result = invert_result(result);
@@ -101,45 +120,60 @@ void Node::backprop(Result result) {
 
 void Node::update(Result result) {
   total_result += result;
-  nvisits++;
+  visit_count++;
 }
 
-double Node::winrate(FarNode child) {
-  assert(child->nvisits > 0);
-  return child->total_result / child->nvisits;
+double Node::winrate(Node* child) {
+  if (child->visit_count == 0)
+    return 0.5;
+  return child->total_result / child->visit_count;
 }
 
-double Node::uct_score(FarNode child) {
+double Node::uct_score(Node* child) {
+  if (child->visit_count == 0)
+    return 1e6;
   assert(child->parent);
-  assert(child->nvisits > 0);
-  return winrate(child) + sqrt(2 * log(child->parent->nvisits) / child->nvisits);
+  return winrate(child) + sqrt(2 * log(child->parent->visit_count) / child->visit_count);
 }
 
-double Node::most_visited(FarNode child) {
-  return child->nvisits;
+double Node::most_visited(Node* child) {
+  return child->visit_count;
 }
 
-FarNode Node::select_by(std::function<double(FarNode)> key) {
+Node* Node::select_by(std::function<double(Node*)> key) {
   double best_value;
-  FarNode best_child;
-  for (FarNode curr_child: children) {
-    double curr_value = key(curr_child);
-    if (!best_child || best_value < curr_value) {
-      best_value = curr_value;
-      best_child = curr_child;
+  Node* best_child = nullptr;
+  if (children && child_count > 0) {
+    Node* end = children + child_count;
+    for (Node* curr_child = children; curr_child < end; curr_child++) {
+      double curr_value = key(curr_child);
+      if (!best_child || best_value < curr_value) {
+        best_value = curr_value;
+        best_child = curr_child;
+      }
     }
   }
   return best_child;
 }
 
 Move Node::best_move() {
-  FarNode best_child = select_by(most_visited);
+  Node* best_child = select_by(most_visited);
+  assert(best_child);
   assert(best_child->last_move);
   return *best_child->last_move;
 }
 
-void Node::print_evaluations() {
-  for (FarNode child: children) {
-    std::cout << *child->last_move << " " << child->nvisits << " " << winrate(child) << " " << uct_score(child) << std::endl;
+void Node::do_children(std::function<void(Node*)> f) {
+  if (!children)
+    return;
+  Node* end = children + child_count;
+  for (Node* curr_child = children; curr_child < end; curr_child++) {
+    f(curr_child);
   }
+}
+
+void Node::print_evaluations() {
+  do_children([](Node* child) {
+    std::cout << *child->last_move << " " << child->visit_count << " " << winrate(child) << " " << uct_score(child) << std::endl;
+  });
 }

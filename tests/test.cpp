@@ -382,10 +382,10 @@ BOOST_AUTO_TEST_CASE(mcts_speedtest) {
   return;
   boost::mt19937 generator;
   State state;
-  mcts::FarNode tree = mcts::Node::create(0, boost::none, state);
+  mcts::Node tree(0, boost::none, state);
   auto then = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < 1e5; i++) {
-    tree->sample(state, generator);
+    tree.sample(state, generator);
     if (i % 1024 == 0) {
       auto duration = std::chrono::high_resolution_clock::now() - then;
       std::cout << i << " " << duration.count() << std::endl;

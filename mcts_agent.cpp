@@ -2,37 +2,47 @@
 #include "mcts.hpp"
 
 void MCTSAgent::start_pondering(const State state) {
-  if (ponderers.empty())
+  if (ponderers.size() == 0)
     spawn_ponderers();
-  ponder_state = state;
+  mcts::Node* tree = 0;
+  boost::optional<PonderState> ponder_state = this->ponder_state.peek();
+  if (ponder_state)
+    tree = ponder_state->node;
+  this->ponder_state = PonderState{state, get_node(state, tree)};
 }
+
 void MCTSAgent::stop_pondering() {
   ponder_state = boost::none;
 }
 
 void MCTSAgent::ponder(boost::mt19937 generator) {
   while (true) {
-    State state(*ponder_state);
-    FarNode node = get_ponder_node(state);
-    // FIXME: make mcts threadsafe enough
+    PonderState ponder_state(*this->ponder_state);
     for (int i = 0; i < 100; i++)
-      node->sample(state, generator);
+      ponder_state.node->sample(ponder_state.state, generator);
   }
 }
 
-void MCTSAgent::get_ponder_node(State const& state) {
-  
+mcts::Node* MCTSAgent::get_node(State const& state, mcts::Node* tree) {
+  if (tree) {
+    for (int depth = 0; depth < 10; depth++) {
+      mcts::Node* node = tree->find_node(state.hash, depth);
+      if (node)
+        return node;
+    }
+    delete tree;
+  }
+  return new mcts::Node(nullptr, boost::none, state);
 }
 
 void MCTSAgent::spawn_ponderers() {
   const int PONDERER_COUNT = 2;
   for (int i = 0; i < PONDERER_COUNT; i++) {
     auto seed = generator();
-    auto ponderer = boost::thread([this, seed](){
+    ponderers.create_thread([this, seed](){
         boost::mt19937 generator(seed);
         ponder(generator);
       });
-    ponderers.push_back(ponderer);
   }
 }
 
@@ -41,12 +51,12 @@ Move MCTSAgent::decide(const State& state) {
 }
 
 boost::future<Move> MCTSAgent::start_decision(const State state) {
-  return boost::async([state, this]() {
-      mcts::FarNode tree = mcts::Node::create(0, boost::none, state);
-      for (int i = 0; i < 1e5; i++)
-        tree->sample(state, generator);
-      tree->print_evaluations();
-      return tree->best_move();
+  start_pondering(state);
+  mcts::Node* node = (*ponder_state).node;
+  return boost::async([=]() {
+      boost::this_thread::sleep_for(boost::chrono::seconds(5));
+      node->print_evaluations();
+      return node->best_move();
     });
 }
 void MCTSAgent::finalize_decision() {

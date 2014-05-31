@@ -2,7 +2,7 @@
 
 // like boost::optional, but dereferencing blocks until there is data
 template <typename T>
-class Sometimes<T> {
+class Sometimes {
   boost::optional<T> optional_data;
   boost::mutex mutex;
   boost::condition_variable data_becomes_available_condition;
@@ -12,18 +12,23 @@ public:
   // caller gets to it
   inline
   T operator * () {
-    boost::lock_guard lock(mutex);
+    boost::unique_lock<boost::mutex> lock(mutex);
     while (!optional_data)
-      data_becomes_available_condition.wait();
+      data_becomes_available_condition.wait(lock);
     return *optional_data;
   }
 
-  inline
   template <typename U>
+  inline
   Sometimes<T>& operator = (U const& u) {
-    boost::lock_guard lock(mutex);
+    boost::unique_lock<boost::mutex> lock(mutex);
     optional_data = u;
     data_becomes_available_condition.notify_all();
     return *this;
+  }
+
+  inline
+  boost::optional<T> peek() {
+    return optional_data;
   }
 };
