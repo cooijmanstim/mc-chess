@@ -77,7 +77,7 @@ void interface_with(std::istream& in, std::ostream& out) {
   bool debug = false;
   
   Game game;
-  MCTSAgent agent;
+  MCTSAgent agent(2);
   boost::optional<Color> agent_color;
 
   boost::future<void> future_quit;
@@ -135,6 +135,7 @@ void interface_with(std::istream& in, std::ostream& out) {
         protocol_assert(!agent_color, "expected \"new\" only in force mode");
         game = Game();
         agent_color = colors::black;
+        agent.set_state(game.current_state());
       }},
     {"variant", unsupported},
     {"quit", [&](ARGV argv) {
@@ -150,9 +151,9 @@ void interface_with(std::istream& in, std::ostream& out) {
       }},
     {"go", [&](ARGV argv) {
         agent_color = game.color_to_move();
-        const State& state = game.current_state();
-        agent.start_pondering(state);
-        future_decision = agent.start_decision(state);
+        agent.set_state(game.current_state());
+        agent.start_pondering();
+        future_decision = agent.start_decision();
       }},
     {"playother", [&](ARGV argv) {
         protocol_assert(!agent_color, "expected \"playother\" only in force mode");
@@ -179,9 +180,9 @@ void interface_with(std::istream& in, std::ostream& out) {
         }
         game.make_move(move);
         if (agent_color) {
-          const State& state = game.current_state();
-          agent.start_pondering(state);
-          future_decision = agent.start_decision(state);
+          agent.advance_state(move);
+          agent.start_pondering();
+          future_decision = agent.start_decision();
         }
       }},
     {"?", [&](ARGV argv) {
@@ -194,8 +195,8 @@ void interface_with(std::istream& in, std::ostream& out) {
       }},
     {"draw", [&](ARGV argv) {
         protocol_assert(agent_color, "\"draw\" when engine not assigned to any color");
-        const State& state = game.current_state();
-        if (agent.accept_draw(state, *agent_color))
+        agent.set_state(game.current_state());
+        if (agent.accept_draw(*agent_color))
           send_command("offer draw");
       }},
     {"result", [&](ARGV argv) {
@@ -205,6 +206,7 @@ void interface_with(std::istream& in, std::ostream& out) {
         protocol_assert(!agent_color, "expected \"setboard\" only in force mode");
         std::string fen = boost::algorithm::join(ARGV(argv.begin() + 1, argv.end()), " ");
         game.setboard(fen);
+        agent.set_state(game.current_state());
       }},
     {"edit", unsupported},
     {"hint", unsupported},
@@ -212,12 +214,14 @@ void interface_with(std::istream& in, std::ostream& out) {
     {"undo", [&](ARGV argv) {
         protocol_assert(!agent_color, "expected \"undo\" only in force mode");
         game.undo();
+        agent.set_state(game.current_state());
       }},
     {"remove", [&](ARGV argv) {
         protocol_assert(!agent_color || agent_color != game.color_to_move(),
                         "expected \"remove\" only during user's turn");
         game.undo();
         game.undo();
+        agent.set_state(game.current_state());
       }},
     {"hard", do_nothing},
     {"easy", do_nothing},
@@ -245,6 +249,7 @@ void interface_with(std::istream& in, std::ostream& out) {
     Move move = future_decision.get();
     send_command("move " + notation::coordinate::format(move));
     game.make_move(move);
+    agent.advance_state(move);
     // there has to be a better way to make sure we don't keep redetecting
     // the same future decision value, but i don't know it.  really, the
     // wait_for_any function should wait for any one of them to turn from
