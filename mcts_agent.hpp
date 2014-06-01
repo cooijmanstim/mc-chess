@@ -4,29 +4,45 @@
 
 #include "agent.hpp"
 #include "sometimes.hpp"
+#include <boost/noncopyable.hpp>
+
 #include "mcts.hpp"
 
-struct PonderState {
-  State state;
-  mcts::Node* node;
-};
-
-class MCTSAgent : Agent {
+class MCTSAgent : Agent, boost::noncopyable {
   boost::mt19937 generator;
   boost::thread_group ponderers;
-  Sometimes<PonderState> ponder_state;
+
+  bool do_ponder;
+  bool do_terminate;
+  boost::optional<State> state;
+  mcts::Node* node;
+
+  bool pending_change;
+  boost::barrier barrier_before_change;
+  boost::barrier barrier_after_change;
 
 public:
-  void start_pondering(const State state);
+  MCTSAgent(unsigned nponderers);
+  ~MCTSAgent();
+
+  // to safely communicate with ponderers
+  void between_ponderings(std::function<void()> change);
+  void perform_pondering(std::function<void()> pondering);
+
+  void set_state(State state);
+  void advance_state(Move move);
+
+  void start_pondering();
   void stop_pondering();
-  mcts::Node* get_node(State const& state, mcts::Node* tree);
-  void spawn_ponderers();
   void ponder(boost::mt19937 generator);
-  Move decide(const State& state);
-  boost::future<Move> start_decision(const State state);
+
+  Move decide();
+  boost::future<Move> start_decision();
   void finalize_decision();
   void abort_decision();
-  bool accept_draw(const State& state, const Color color);
+
+  bool accept_draw(Color color);
+
   void idle();
   void pause();
   void resume();

@@ -1,43 +1,15 @@
 #include "mcts_agent.hpp"
 #include "mcts.hpp"
 
-void MCTSAgent::start_pondering(const State state) {
-  if (ponderers.size() == 0)
-    spawn_ponderers();
-  mcts::Node* tree = 0;
-  boost::optional<PonderState> ponder_state = this->ponder_state.peek();
-  if (ponder_state)
-    tree = ponder_state->node;
-  this->ponder_state = PonderState{state, get_node(state, tree)};
-}
-
-void MCTSAgent::stop_pondering() {
-  ponder_state = boost::none;
-}
-
-void MCTSAgent::ponder(boost::mt19937 generator) {
-  while (true) {
-    PonderState ponder_state(*this->ponder_state);
-    for (int i = 0; i < 100; i++)
-      ponder_state.node->sample(ponder_state.state, generator);
-  }
-}
-
-mcts::Node* MCTSAgent::get_node(State const& state, mcts::Node* tree) {
-  if (tree) {
-    for (int depth = 0; depth < 10; depth++) {
-      mcts::Node* node = tree->find_node(state.hash, depth);
-      if (node)
-        return node;
-    }
-    delete tree;
-  }
-  return new mcts::Node(nullptr, boost::none, state);
-}
-
-void MCTSAgent::spawn_ponderers() {
-  const int PONDERER_COUNT = 2;
-  for (int i = 0; i < PONDERER_COUNT; i++) {
+MCTSAgent::MCTSAgent(unsigned nponderers)
+  : pending_change(false),
+    barrier_before_change(nponderers + 1),
+    barrier_after_change(nponderers + 1),
+    do_ponder(false),
+    do_terminate(false),
+    node(nullptr)
+{
+  for (unsigned i = 0; i < nponderers; i++) {
     auto seed = generator();
     ponderers.create_thread([this, seed](){
         boost::mt19937 generator(seed);
@@ -46,14 +18,86 @@ void MCTSAgent::spawn_ponderers() {
   }
 }
 
-Move MCTSAgent::decide(const State& state) {
+MCTSAgent::~MCTSAgent() {
+  do_terminate = true;
+  ponderers.join_all();
+}
+
+void MCTSAgent::between_ponderings(std::function<void()> change) {
+  pending_change = true;
+  barrier_before_change.wait();
+  change();
+  pending_change = false;
+  barrier_after_change.wait();
+}
+
+void MCTSAgent::perform_pondering(std::function<void()> pondering) {
+  if (pending_change || !do_ponder) {
+    barrier_before_change.wait();
+    barrier_after_change.wait();
+    assert(node || !do_ponder);
+  }
+  if (do_ponder)
+    pondering();
+}
+
+void MCTSAgent::set_state(State state) {
+  if (state == this->state)
+    return;
+  between_ponderings([this, state]() {
+      this->state = state;
+      if (this->node)
+        delete this->node;
+      this->node = new mcts::Node(nullptr, boost::none, state);
+    });
+}
+
+void MCTSAgent::advance_state(Move move) {
+  assert(this->state);
+  assert(this->node);
+  between_ponderings([this, move]() {
+      this->state->make_move(move);
+      mcts::Node* child = this->node->get_child(move);
+      if (child) {
+        this->node = child->destroy_parent_and_siblings();
+        assert(this->node);
+      } else {
+        // no simulations between set_state and advance_state, so nothing thrown
+        // away by just replacing the node.
+        delete this->node;
+        this->node = new mcts::Node(nullptr, move, *state);
+      }
+    });
+}
+
+void MCTSAgent::start_pondering() {
+  between_ponderings([this]() {
+      do_ponder = true;
+    });
+}
+
+void MCTSAgent::stop_pondering() {
+  between_ponderings([this]() {
+      do_ponder = false;
+    });
+}
+
+void MCTSAgent::ponder(boost::mt19937 generator) {
+  while (!do_terminate) {
+    perform_pondering([this, &generator]() {
+        for (int i = 0; i < 100; i++)
+          node->sample(*state, generator);
+      });
+  }
+}
+
+Move MCTSAgent::decide() {
   throw std::runtime_error("not implemented");
 }
 
-boost::future<Move> MCTSAgent::start_decision(const State state) {
-  start_pondering(state);
-  mcts::Node* node = (*ponder_state).node;
-  return boost::async([=]() {
+boost::future<Move> MCTSAgent::start_decision() {
+  start_pondering();
+  return boost::async([this]() {
       boost::this_thread::sleep_for(boost::chrono::seconds(5));
       node->print_evaluations();
       return node->best_move();
@@ -66,7 +110,7 @@ void MCTSAgent::abort_decision() {
   // FIXME
 }
 
-bool MCTSAgent::accept_draw(const State& state, Color color) {
+bool MCTSAgent::accept_draw(Color color) {
   static boost::random::bernoulli_distribution<> distribution(0.1);
   return distribution(generator);
 }
@@ -76,5 +120,9 @@ void MCTSAgent::idle() {
   stop_pondering();
 }
 
-void MCTSAgent::pause() {}
-void MCTSAgent::resume() {}
+void MCTSAgent::pause() {
+  stop_pondering();
+}
+void MCTSAgent::resume() {
+  start_pondering();
+}

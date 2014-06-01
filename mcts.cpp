@@ -17,11 +17,45 @@ Node::~Node() {
   if (children && child_count > 0) {
     // this is thread-safe because children and child_count are constant
     // after the node is expanded.
+    // NOTE: not entirely true anymore, but still thread-safe.  MCTSAgent
+    // uses a persistent tree and occasionally destroys parts of it, but
+    // always makes sure that nobody else is working on the tree at the
+    // same time.
     Node* end = children + child_count;
     for (Node *child = children; child < end; child++)
       child->~Node();
     ::operator delete(children);
   }
+}
+
+Node::Node(Node&& that) {
+  // the move idiom doesn't really fit what we're trying to do here.  in
+  // destroy_parent_and_siblings(), we want to destroy the node's siblings
+  // and free their memory, but the parent's children are all stored in one
+  // contiguous block of memory, so we can't free selectively.  instead, we
+  // reallocate memory for this node elsewhere and move its resources there.
+  // the part that doesn't fit the move idiom is that the parent is still
+  // pointing to the old memory location for its children even though one
+  // of its children has moved.  this is the behavior we need, because then
+  // we can destroy the parent and have it take the siblings down with it.
+  // all we need to do is ensure that.children no longer refers to the list
+  // of this node's children (because we want to keep it and not have it
+  // destroyed).
+  // tl;dr: behavior of the move constructor is tailored to
+  // destroy_parent_and_siblings() and may not fit other uses.
+  this->parent = nullptr;
+  this->children = that.children;
+  this->child_count = that.child_count;
+  this->state_hash = that.state_hash;
+  this->last_move = that.last_move;
+  this->total_result = that.total_result;
+  this->visit_count = that.visit_count;
+
+  that.child_count = 0;
+  that.children = nullptr;
+  do_children([this](Node* child) {
+      child->parent = this;
+    });
 }
 
 const double
@@ -33,20 +67,21 @@ Result Node::invert_result(Result result) {
   return 1 - result;
 }
 
-Node* Node::find_node(Hash state_hash, unsigned depth) {
-  if (this->state_hash == state_hash)
-    return this;
-  if (depth > 0) {
-    if (children && child_count > 0) {
-      Node* end = children + child_count;
-      for (Node* child = children; child < end; child++) {
-        Node* node = child->find_node(state_hash, depth - 1);
-        if (node)
-          return node;
-      }
-    }
+Node* Node::get_child(Move move) {
+  if (children && child_count > 0) {
+    Node* end = children + child_count;
+    for (Node *child = children; child < end; child++)
+      if (child->last_move == move)
+        return child;
   }
   return nullptr;
+}
+
+Node* Node::destroy_parent_and_siblings() {
+  Node* that = new Node(std::move(*this));
+  assert(parent);
+  delete parent;
+  return that;
 }
 
 void Node::sample(State state, boost::mt19937& generator) {
@@ -60,7 +95,7 @@ void Node::sample(State state, boost::mt19937& generator) {
 
 Node* Node::select(State& state) {
   Node* node = this;
-  while (node->children && node->child_count != 0) {
+  while (node->children && node->child_count > 0) {
     node = node->select_by(uct_score);
     assert(node);
     state.make_move(*node->last_move);
@@ -82,6 +117,11 @@ Node* Node::expand(State& state, boost::mt19937& generator) {
   }
   this->child_count = moves.size();
   this->children = children;
+#ifdef MC_EXPENSIVE_RUNTIME_TESTS
+  do_children([](Node* child) {
+      assert(child->last_move);
+    });
+#endif
   // select one of the children
   return select(state);
 }

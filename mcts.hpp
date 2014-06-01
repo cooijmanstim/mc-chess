@@ -2,6 +2,8 @@
 
 #include <boost/enable_shared_from_this.hpp>
 
+#include <boost/noncopyable.hpp>
+
 #include "state.hpp"
 
 namespace mcts {
@@ -9,7 +11,7 @@ namespace mcts {
 
   typedef double Result;
 
-  class Node {
+  class Node : boost::noncopyable {
     Node* parent;
     Node* children;
     size_t child_count;
@@ -22,9 +24,12 @@ namespace mcts {
 
   public:
     Node(Node* parent, boost::optional<Move> move, const State& state);
+    Node(Node&& that);
     ~Node();
     Result invert_result(Result result);
-    Node* find_node(Hash state_hash, unsigned depth);
+    Node* get_child(Move move);
+    // NOTE: reallocates itself and returns the new address
+    Node* destroy_parent_and_siblings();
     void sample(State state, boost::mt19937& generator);
     Node* select(State& state);
     Node* expand(State& state, boost::mt19937& generator);

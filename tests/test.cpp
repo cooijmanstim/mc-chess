@@ -395,7 +395,11 @@ BOOST_AUTO_TEST_CASE(mcts_speedtest) {
 
 BOOST_AUTO_TEST_CASE(mcts_agent) {
   State state;
-  MCTSAgent agent;
-  auto decision = agent.start_decision(state);
+  MCTSAgent agent(2);
+  agent.set_state(state);
+  auto decision = agent.start_decision();
+  Move move = decision.get();
+  agent.advance_state(move);
+  decision = agent.start_decision();
   decision.get();
 }
