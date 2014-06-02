@@ -1,4 +1,5 @@
 #include "mcts.hpp"
+#include "notation.hpp"
 
 using namespace mcts;
 
@@ -105,6 +106,7 @@ Node* Node::select(State& state) {
 
 Node* Node::expand(State& state, boost::mt19937& generator) {
   std::vector<Move> moves = state.moves();
+
   Node* children = static_cast<Node*>(::operator new(moves.size() * sizeof(Node)));
   for (size_t i = 0; i < moves.size(); i++) {
     // to avoid having to keep track of unexplored_moves, and to ensure the
@@ -212,8 +214,31 @@ void Node::do_children(std::function<void(Node*)> f) {
   }
 }
 
-void Node::print_evaluations() {
+void Node::print_statistics() {
   do_children([](Node* child) {
     std::cout << *child->last_move << " " << child->visit_count << " " << winrate(child) << " " << uct_score(child) << std::endl;
   });
+  std::cout << visit_count << " " << winrate(this) << std::endl;
+}
+
+void Node::graphviz(std::ostream& os) {
+  auto hash_as_id = [this](Hash hash) {
+    return str(boost::format("\"%1$#8x\"") % hash);
+  };
+  os << hash_as_id(state_hash)
+     << "[label=\"{"
+     << (last_move ? notation::coordinate::format(*last_move) : "-")
+     << " | "
+     << winrate(this) << " (" << total_result << "/" << visit_count << ") "
+     << " | "
+     << (parent ? str(boost::format("%f") % uct_score(this)) : "-")
+     << "}\"];"
+     << std::endl;
+  do_children([&](Node* child) {
+      // to keep the graph small
+      if (child->visit_count == 0)
+        return;
+      child->graphviz(os);
+      os << hash_as_id(state_hash) << " -> " << hash_as_id(child->state_hash) << ";" << std::endl;
+    });
 }

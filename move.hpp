@@ -31,6 +31,7 @@ public:
   squares::Index source() const;
   squares::Index target() const;
 
+  bool is_castle() const;
   bool is_capture() const;
   bool is_king_capture() const;
   boost::optional<Piece> promotion() const;

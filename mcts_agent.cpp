@@ -99,7 +99,7 @@ boost::future<Move> MCTSAgent::start_decision() {
   start_pondering();
   return boost::async([this]() {
       boost::this_thread::sleep_for(boost::chrono::seconds(5));
-      node->print_evaluations();
+      node->print_statistics();
       return node->best_move();
     });
 }

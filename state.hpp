@@ -11,6 +11,7 @@
 #include "bitboard.hpp"
 #include "move_generation.hpp"
 #include "hash.hpp"
+#include "undo.hpp"
 
 class State {
 public:
@@ -50,15 +51,16 @@ public:
   std::vector<Move> moves() const;
   boost::optional<Move> random_move(boost::mt19937& generator) const;
 
-  void make_move(const Move& m);
+  Undo make_move(const Move& m);
+  void unmake_move(const Undo& u);
 
   boost::optional<ColoredPiece> colored_piece_at(squares::Index square) const;
-  Piece moving_piece(const Move& move, const Halfboard& us) const;
-  void make_move_on_their_halfboard (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
-  void make_move_on_our_halfboard   (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
-  void update_castling_rights       (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
-  void update_en_passant_square     (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
-  void make_move_on_occupancy       (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
+  Piece piece_at(squares::Index square, Color color) const;
+  void make_move_on_their_halfboard (const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
+  void make_move_on_our_halfboard   (const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
+  void update_castling_rights       (const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
+  void update_en_passant_square     (const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
+  void make_move_on_occupancy       (const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
 
   void compute_occupancy();
   void compute_their_attacks();

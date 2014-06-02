@@ -272,19 +272,20 @@ boost::optional<ColoredPiece> State::colored_piece_at(squares::Index square) con
   return boost::none;
 }
 
-Piece State::moving_piece(const Move& move, const Halfboard& us) const {
-  const Bitboard source = squares::bitboard(move.source());
-  for (Piece piece: pieces::values) {
-    if (us[piece] & source)
+Piece State::piece_at(squares::Index square, Color color) const {
+  Bitboard bitboard = squares::bitboard(square);
+  for (Piece piece: pieces::values)
+    if (board[color][piece] & bitboard)
       return piece;
-  }
-  std::cerr << "State::moving_piece: no match for move " << move << " in state: " << std::endl;
+  std::cerr << "State::piece_at: no " << colors::name(color) << " piece at " << squares::keywords.at(square) << " in state: " << std::endl;
   std::cerr << *this << std::endl;
   print_backtrace();
   throw std::runtime_error("no such piece");
 }
 
-void State::update_castling_rights(const Move& move, const Piece piece, const Bitboard source, const Bitboard target) {
+void State::update_castling_rights(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target) {
+  undo.prior_castling_rights = castling_rights;
+
   switch (piece) {
   case pieces::king:
     for (Castle castle: castles::values) {
@@ -313,7 +314,9 @@ void State::update_castling_rights(const Move& move, const Piece piece, const Bi
   }
 }
 
-void State::update_en_passant_square(const Move& move, const Piece piece, const Bitboard source, const Bitboard target) {
+void State::update_en_passant_square(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target) {
+  undo.prior_en_passant_square = en_passant_square;
+
   if (en_passant_square)
     hash ^= hashes::en_passant(en_passant_square);
 
@@ -344,7 +347,7 @@ void State::update_en_passant_square(const Move& move, const Piece piece, const 
   }
 }
 
-void State::make_move_on_their_halfboard(const Move& move, const Piece piece, const Bitboard source, const Bitboard target) {
+void State::make_move_on_their_halfboard(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target) {
   using hashes::toggle;
 
   Halfboard& their_halfboard = board[them];
@@ -365,6 +368,8 @@ void State::make_move_on_their_halfboard(const Move& move, const Piece piece, co
 
       their_halfboard[pieces::pawn] &= ~capture_target;
       toggle(hash, them, pieces::pawn, squares::index(capture_target));
+
+      undo.record_capture(pieces::pawn, capture_target);
     } else {
       // if we need speed, break out of the loop as soon as we find the piece
       // we're looking for.  otherwise keep going to test the assumption that
@@ -381,6 +386,8 @@ void State::make_move_on_their_halfboard(const Move& move, const Piece piece, co
 #endif
           their_halfboard[capturee] &= ~target;
           toggle(hash, them, capturee, squares::index(target));
+
+          undo.record_capture(capturee, target);
 #ifndef MC_EXPENSIVE_RUNTIME_TESTS
           break;
 #endif
@@ -399,13 +406,14 @@ void State::make_move_on_their_halfboard(const Move& move, const Piece piece, co
   case move_types::promotion_rook:
   case move_types::promotion_queen:
   case move_types::normal:
+    undo.record_no_capture();
     break;
   default:
     throw std::runtime_error(str(boost::format("unhandled MoveType case: %|1$#x|") % move.type()));
   }
 }
 
-void State::make_move_on_our_halfboard(const Move& move, const Piece piece, const Bitboard source, const Bitboard target) {
+void State::make_move_on_our_halfboard(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target) {
   using namespace pieces;
   using hashes::toggle;
 
@@ -460,7 +468,7 @@ void State::make_move_on_our_halfboard(const Move& move, const Piece piece, cons
   }
 }
 
-void State::make_move_on_occupancy(const Move& move, const Piece piece, const Bitboard source, const Bitboard target) {
+void State::make_move_on_occupancy(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target) {
   occupancy[us] &= ~source;
   occupancy[us] |=  target;
 
@@ -499,30 +507,64 @@ void State::make_move_on_occupancy(const Move& move, const Piece piece, const Bi
   }
 }
 
-void State::make_move(const Move& move) {
+Undo State::make_move(const Move& move) {
+  Undo undo;
+  undo.move = move;
+
   Bitboard source = squares::bitboard(move.source()),
            target = squares::bitboard(move.target());
-  Piece piece = moving_piece(move, board[us]);
+  Piece piece = piece_at(move.source(), us);
 
 #ifdef MC_EXPENSIVE_RUNTIME_TESTS
   State prior_state(*this);
 #endif
 
-  make_move_on_our_halfboard   (move, piece, source, target);
-  make_move_on_their_halfboard (move, piece, source, target);
-  make_move_on_occupancy       (move, piece, source, target);
-  update_en_passant_square     (move, piece, source, target);
-  update_castling_rights       (move, piece, source, target);
+  make_move_on_our_halfboard   (move, undo, piece, source, target);
+  make_move_on_their_halfboard (move, undo, piece, source, target);
+  make_move_on_occupancy       (move, undo, piece, source, target);
+  update_en_passant_square     (move, undo, piece, source, target);
+  update_castling_rights       (move, undo, piece, source, target);
 
   std::swap(us, them);
   hash ^= hashes::black_to_move();
 
+  undo.prior_halfmove_clock = halfmove_clock;
   if (piece == pieces::pawn || move.is_capture()) {
     halfmove_clock = 0;
   } else {
     halfmove_clock++;
   }
 
+  compute_their_attacks();
+  return undo;
+}
+
+void State::unmake_move(const Undo& undo) {
+  std::swap(us, them);
+
+  Piece piece = piece_at(undo.move.target(), us);
+
+  // move back our piece
+  board[us][piece] = board[us][piece]
+    & ~squares::bitboard(undo.move.target())
+    |  squares::bitboard(undo.move.source());
+
+  // in case of castle, move the rook back as well
+  if (undo.move.is_castle()) {
+    board[us][pieces::rook] = board[us][pieces::rook]
+      & ~squares::bitboard(castles::rook_target(undo.move.target()))
+      |  squares::bitboard(castles::rook_source(undo.move.target()));
+  }
+
+  // replace any captured piece
+  board[them][undo.captured_piece] |= undo.capture_square;
+
+  halfmove_clock = undo.prior_halfmove_clock;
+  en_passant_square = undo.prior_en_passant_square;
+  castling_rights = undo.prior_castling_rights;
+
+  compute_hash();
+  compute_occupancy();
   compute_their_attacks();
 }
 

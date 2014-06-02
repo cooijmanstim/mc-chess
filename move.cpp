@@ -30,6 +30,16 @@ MoveType Move::type() const { return static_cast<MoveType>((move >> offset_type)
 squares::Index Move::source() const { return static_cast<squares::Index>((move >> offset_source) & ((1 << nbits_source) - 1)); }
 squares::Index Move::target() const { return static_cast<squares::Index>((move >> offset_target)   & ((1 << nbits_target)   - 1)); }
 
+bool Move::is_castle() const {
+  switch (type()) {
+  case move_types::castle_kingside:
+  case move_types::castle_queenside:
+    return true;
+  default:
+    return false;
+  }
+}
+
 bool Move::is_capture() const {
   switch (type()) {
   case move_types::capture:

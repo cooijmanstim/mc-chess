@@ -378,6 +378,21 @@ BOOST_AUTO_TEST_CASE(king_capture) {
   BOOST_CHECK_EQUAL(state.winner(), colors::white);
 }
 
+BOOST_AUTO_TEST_CASE(unmake_move) {
+  State state;
+  boost::mt19937 generator;
+  for (int i = 0; i < 100; i++) {
+    boost::optional<Move> move = state.random_move(generator);
+    if (!move)
+      break;
+    State state2(state);
+    Undo undo = state2.make_move(*move);
+    state2.unmake_move(undo);
+    BOOST_CHECK_EQUAL(state, state2);
+    state.make_move(*move);
+  }
+}
+
 BOOST_AUTO_TEST_CASE(mcts_speedtest) {
   return;
   boost::mt19937 generator;
@@ -402,4 +417,17 @@ BOOST_AUTO_TEST_CASE(mcts_agent) {
   agent.advance_state(move);
   decision = agent.start_decision();
   decision.get();
+}
+
+BOOST_AUTO_TEST_CASE(mcts_endgame_graphviz) {
+  State state("r1bk3r/p2p1pNp/n2B1n2/1p1NP2P/6P1/3P4/P1P1K3/q5b1 w - - 0 23");
+  boost::mt19937 generator;
+  mcts::Node tree(0, boost::none, state);
+  for (int i = 0; i < 1e4; i++)
+    tree.sample(state, generator);
+  std::cout << state << std::endl;
+  tree.print_statistics();
+  //std::cout << "digraph G {" << std::endl;
+  //tree.graphviz(std::cout);
+  //std::cout << "}" << std::endl;
 }
