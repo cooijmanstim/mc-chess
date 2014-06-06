@@ -48,11 +48,15 @@ public:
 
   friend std::ostream& operator<<(std::ostream& o, const State& s);
 
-  std::vector<Move> moves() const;
-  boost::optional<Move> random_move(boost::mt19937& generator) const;
-
   Undo make_move(const Move& m);
   void unmake_move(const Undo& u);
+
+  std::vector<Move> moves() const;
+  boost::optional<Move> random_move(boost::mt19937& generator) const;
+  std::vector<Move> legal_moves();
+  void erase_illegal_moves(std::vector<Move>& moves);
+  boost::optional<Move> make_random_legal_move(boost::mt19937& generator);
+  bool their_king_in_check() const;
 
   boost::optional<ColoredPiece> colored_piece_at(squares::Index square) const;
   Piece piece_at(squares::Index square, Color color) const;

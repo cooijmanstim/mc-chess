@@ -253,14 +253,58 @@ std::vector<Move> State::moves() const {
   return moves;
 }
 
+std::vector<Move> State::legal_moves() {
+  std::vector<Move> moves = this->moves();
+  erase_illegal_moves(moves);
+  return moves;
+}
+
+void State::erase_illegal_moves(std::vector<Move>& moves) {
+  for (auto it = moves.begin(); it != moves.end(); ) {
+    Undo undo = make_move(*it);
+    if (their_king_in_check()) {
+      it = moves.erase(it);
+    } else {
+      it++;
+    }
+    unmake_move(undo);
+  }
+}
+
 boost::optional<Move> State::random_move(boost::mt19937& generator) const {
   // TODO: do better
   std::vector<Move> moves = this->moves();
   if (moves.empty())
     return boost::none;
-  boost::uniform_int<> distribution(0, moves.size() - 1);
-  Move move = moves.at(distribution(generator));
-  return move;
+  return random_element(moves, generator);
+}
+
+boost::optional<Move> State::make_random_legal_move(boost::mt19937& generator) {
+  // try a pseudolegal move
+  std::vector<Move> moves = this->moves();
+  if (moves.empty())
+    return boost::none;
+  Move move = random_element(moves, generator);
+  Undo undo = make_move(move);
+
+  // if it was legal, fine
+  if (!their_king_in_check())
+    return move;
+
+  // if it was not legal (happens relatively rarely), narrow down to legal moves
+  unmake_move(undo);
+  erase_illegal_moves(moves);
+
+  if (moves.empty())
+    return boost::none;
+  return random_element(moves, generator);
+}
+
+bool State::their_king_in_check() const {
+  // TODO: optimize
+  Bitboard flat_occupancy;
+  board::flatten(occupancy, flat_occupancy);
+  return moves::attacks(us, flat_occupancy, board[us]) & board[them][pieces::king];
 }
 
 boost::optional<ColoredPiece> State::colored_piece_at(squares::Index square) const {
@@ -545,9 +589,13 @@ void State::unmake_move(const Undo& undo) {
   Piece piece = piece_at(undo.move.target(), us);
 
   // move back our piece
-  board[us][piece] = board[us][piece]
-    & ~squares::bitboard(undo.move.target())
-    |  squares::bitboard(undo.move.source());
+  board[us][piece] &= ~squares::bitboard(undo.move.target());
+  if (undo.move.is_promotion()) {
+    // demote
+    board[us][pieces::pawn] |= squares::bitboard(undo.move.source());
+  } else {
+    board[us][piece]        |= squares::bitboard(undo.move.source());
+  }
 
   // in case of castle, move the rook back as well
   if (undo.move.is_castle()) {
@@ -608,14 +656,9 @@ bool State::drawn_by_50() const {
   return halfmove_clock >= 50;
 }
 
-// NOTE: assumes game is over
+// NOTE: assumes game is over and no moves have been made since the game was over
 boost::optional<Color> State::winner() const {
   if (drawn_by_50())
     return boost::none;
-  assert(moves().empty());
-  if (bitboard::is_empty(board[us][pieces::king]))
-    return them;
-  else if (bitboard::is_empty(board[them][pieces::king]))
-    return us;
-  return boost::none;
+  return them;
 }

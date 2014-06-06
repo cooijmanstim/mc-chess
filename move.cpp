@@ -58,6 +58,10 @@ bool Move::is_king_capture() const {
   return type() == move_types::king_capture;
 }
 
+bool Move::is_promotion() const {
+  return !!promotion();
+}
+
 boost::optional<Piece> Move::promotion() const {
   switch (type()) {
 #define _(piece) case move_types::promotion_ ## piece: case move_types::capturing_promotion_ ## piece: return pieces:: piece;

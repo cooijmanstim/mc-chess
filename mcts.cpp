@@ -105,17 +105,17 @@ Node* Node::select(State& state) {
 }
 
 Node* Node::expand(State& state, boost::mt19937& generator) {
-  std::vector<Move> moves = state.moves();
+  // TODO: computation of legal_moves() involves making the moves and then
+  // unmaking them again.  in the loop below we do the same.  maybe combine.
+  std::vector<Move> moves = state.legal_moves();
 
   Node* children = static_cast<Node*>(::operator new(moves.size() * sizeof(Node)));
   for (size_t i = 0; i < moves.size(); i++) {
     // to avoid having to keep track of unexplored_moves, and to ensure the
     // children sequence is constant-size, construct all children right away.
-    // TODO: doing this requires copying state.  if we're copying state anyway,
-    // maybe might as well do a rollout for each of the children.
-    State child_state(state);
-    child_state.make_move(moves[i]);
-    new(&children[i]) Node(this, moves[i], child_state);
+    Undo undo = state.make_move(moves[i]);
+    new(&children[i]) Node(this, moves[i], state);
+    state.unmake_move(undo);
   }
   this->child_count = moves.size();
   this->children = children;
@@ -137,13 +137,12 @@ Result Node::rollout(State& state, boost::mt19937& generator) {
   while (true) {
     if (state.drawn_by_50())
       return draw_value;
-    boost::optional<Move> move = state.random_move(generator);
+    boost::optional<Move> move = state.make_random_legal_move(generator);
     if (!move)
       break;
 #ifdef MC_EXPENSIVE_RUNTIME_TESTS
     move_history.push_back(*move);
 #endif
-    state.make_move(*move);
   }
   boost::optional<Color> winner = state.winner();
   if (!winner)
