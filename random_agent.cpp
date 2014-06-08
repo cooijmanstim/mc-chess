@@ -4,7 +4,7 @@ void RandomAgent::start_pondering(const State state) {}
 void RandomAgent::stop_pondering() {}
 
 Move RandomAgent::decide(const State& state) {
-  boost::optional<Move> move = state.random_move(generator);
+  boost::optional<Move> move = moves::random_move(state, generator);
   assert(move);
   return *move;
 }

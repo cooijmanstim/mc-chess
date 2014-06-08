@@ -26,8 +26,9 @@ namespace squares {
     return static_cast<Index>(bitboard::scan_forward(b));
   }
 
-  inline void do_bits(Bitboard b, std::function<void(squares::Index)> f) {
-    bitboard::for_each_member(b, [&f](size_t index) {
+  template <typename F>
+  inline void for_each(Bitboard b, F f) {
+    bitboard::for_each_member(b, [&](size_t index) {
         f(static_cast<squares::Index>(index));
       });
   }

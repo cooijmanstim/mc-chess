@@ -17,6 +17,7 @@
 #include "mcts.hpp"
 #include "mcts_agent.hpp"
 #include "notation.hpp"
+#include "targets.hpp"
 
 // NOTE: evaluates arguments twice
 #define BOOST_CHECK_BITBOARDS_EQUAL(a, b) \
@@ -47,16 +48,16 @@ BOOST_AUTO_TEST_CASE(initial_moves) {
 
   std::set<Move> expected_moves;
   using namespace directions;
-  squares::do_bits(ranks::bitboards::_2, [&expected_moves](squares::Index from) {
+  squares::for_each(ranks::bitboards::_2, [&expected_moves](squares::Index from) {
       expected_moves.emplace(from, from +   north, move_types::normal);
       expected_moves.emplace(from, from + 2*north, move_types::double_push);
     });
-  squares::do_bits(squares::bitboards::b1 | squares::bitboards::g1, [&expected_moves](squares::Index from) {
+  squares::for_each(squares::bitboards::b1 | squares::bitboards::g1, [&expected_moves](squares::Index from) {
       expected_moves.emplace(from, from + 2*north + west, move_types::normal);
       expected_moves.emplace(from, from + 2*north + east, move_types::normal);
     });
 
-  const std::vector<Move> moves = state.moves();
+  const std::vector<Move> moves = moves::moves(state);
   const std::set<Move> actual_moves(moves.begin(), moves.end());
 
   std::set<Move> falsenegatives, falsepositives;
@@ -81,10 +82,10 @@ BOOST_AUTO_TEST_CASE(rays_every_which_way) {
   Bitboard bishop_board = squares::bitboard(bishop_square);
   Bitboard rook_board = squares::bitboard(rook_square);
 
-  Bitboard bda = moves::slides(bishop_board, bishop_board, diagonal & ~bishop_board);
-  Bitboard bga = moves::slides(bishop_board, bishop_board, giadonal & ~bishop_board);
-  Bitboard rra = moves::slides_rank(rook_board, rook_board, rank);
-  Bitboard rfa = moves::slides(rook_board, rook_board, file & ~rook_board);
+  Bitboard bda = targets::slides(bishop_board, bishop_board, diagonal & ~bishop_board);
+  Bitboard bga = targets::slides(bishop_board, bishop_board, giadonal & ~bishop_board);
+  Bitboard rra = targets::slides_rank(rook_board, rook_board, rank);
+  Bitboard rfa = targets::slides(rook_board, rook_board, file & ~rook_board);
 
   BOOST_CHECK_BITBOARDS_EQUAL(bda, 0x0408100040800000);
   BOOST_CHECK_BITBOARDS_EQUAL(bga, 0x0080400010080402);
@@ -92,11 +93,9 @@ BOOST_AUTO_TEST_CASE(rays_every_which_way) {
   BOOST_CHECK_BITBOARDS_EQUAL(rfa, 0x0404040404000404);
 
   State state("8/8/8/5B2/8/2R5/8/8 w - - 0 1");
-  Bitboard flat_occupancy;
-  board::flatten(state.occupancy, flat_occupancy);
-  BOOST_CHECK_BITBOARDS_EQUAL(moves::bishop_attacks(flat_occupancy, bishop_square),
+  BOOST_CHECK_BITBOARDS_EQUAL(targets::bishop_attacks(bishop_square, state.flat_occupancy),
                               0x0488500050880402);
-  BOOST_CHECK_BITBOARDS_EQUAL(moves::rook_attacks(flat_occupancy, rook_square),
+  BOOST_CHECK_BITBOARDS_EQUAL(targets::rook_attacks(rook_square, state.flat_occupancy),
                               0x0404040404fb0404);
 }
 
@@ -131,12 +130,10 @@ BOOST_AUTO_TEST_CASE(various_moves) {
 
   std::cout << state << std::endl;
 
-  Bitboard flat_occupancy;
-  board::flatten(state.occupancy, flat_occupancy);
-  BOOST_CHECK_BITBOARDS_EQUAL(moves::rook_attacks(flat_occupancy, squares::c3),
+  BOOST_CHECK_BITBOARDS_EQUAL(targets::rook_attacks(squares::c3, state.flat_occupancy),
                               0x00000000041b0404);
 
-  BOOST_CHECK_BITBOARDS_EQUAL(moves::king_attacks(state.board[colors::white][pieces::king]),
+  BOOST_CHECK_BITBOARDS_EQUAL(targets::king_attacks(state.board[colors::white][pieces::king]),
                               0x0000000000003828);
 
   std::set<Move> expected_moves;
@@ -214,7 +211,7 @@ BOOST_AUTO_TEST_CASE(various_moves) {
     }
   }
 
-  const std::vector<Move> moves = state.moves();
+  const std::vector<Move> moves = moves::moves(state);
   const std::set<Move> actual_moves(moves.begin(), moves.end());
 
   std::set<Move> falsenegatives, falsepositives;
@@ -290,7 +287,7 @@ BOOST_AUTO_TEST_CASE(algebraic_moves) {
 
   std::cout << state << std::endl;
 
-  std::vector<Move> moves = state.moves();
+  std::vector<Move> moves = moves::moves(state);
   std::set<Move> actual_moves(moves.begin(), moves.end());
 
   std::set<Move> falsenegatives, falsepositives;
@@ -308,7 +305,7 @@ BOOST_AUTO_TEST_CASE(move_randomly) {
   State state;
   boost::mt19937 generator;
   for (int i = 0; i < 100; i++) {
-    boost::optional<Move> move = state.random_move(generator);
+    boost::optional<Move> move = moves::random_move(state, generator);
     if (!move)
       break;
     state.make_move(*move);
@@ -341,7 +338,6 @@ BOOST_AUTO_TEST_CASE(king_capture) {
 #define MV(from, to, type) expected_moves.emplace(from, to, type);
   MV(c5, c4, move_types::normal); // leaves king in check
   MV(d5, e5, move_types::normal);
-  MV(d5, e6, move_types::normal); // leaves king in check
   MV(d5, d6, move_types::normal);
   MV(d5, c6, move_types::normal);
   MV(d5, c4, move_types::normal); // leaves king in check
@@ -349,7 +345,7 @@ BOOST_AUTO_TEST_CASE(king_capture) {
   MV(d5, e4, move_types::normal);
 #undef MV
 
-  std::vector<Move> moves = state.moves();
+  std::vector<Move> moves = moves::moves(state);
   std::set<Move> actual_moves(moves.begin(), moves.end());
 
   std::set<Move> falsenegatives, falsepositives;
@@ -359,20 +355,20 @@ BOOST_AUTO_TEST_CASE(king_capture) {
   std::set_difference(actual_moves.begin(), actual_moves.end(),
                       expected_moves.begin(), expected_moves.end(),
                       std::inserter(falsepositives, falsepositives.begin()));
-  BOOST_CHECK_MESSAGE(falsenegatives.empty(), "legal moves not generated: " << falsenegatives);
-  BOOST_CHECK_MESSAGE(falsepositives.empty(), "illegal moves generated: " << falsepositives);
+  BOOST_REQUIRE_MESSAGE(falsenegatives.empty(), "legal moves not generated: " << falsenegatives);
+  BOOST_REQUIRE_MESSAGE(falsepositives.empty(), "illegal moves generated: " << falsepositives);
 
   state.make_move(Move(c5, c4, move_types::normal)); // leaves king in check
 
-  moves = state.moves();
-  BOOST_CHECK_MESSAGE(std::all_of(std::begin(moves), std::end(moves), [&](Move const& move) {
+  moves = moves::moves(state);
+  BOOST_REQUIRE_MESSAGE(std::all_of(std::begin(moves), std::end(moves), [&](Move const& move) {
         return move.is_king_capture();
       }),
     "king capture not forced, state: " << state << " has non-king-capture move in " << moves);
 
   state.make_move(moves[0]);
 
-  moves = state.moves();
+  moves = moves::moves(state);
   BOOST_CHECK_MESSAGE(moves.empty(), "after king capture, state: " << state << " still has moves: " << moves);
 
   BOOST_CHECK_EQUAL(state.winner(), colors::white);
@@ -382,7 +378,7 @@ BOOST_AUTO_TEST_CASE(unmake_move) {
   State state;
   boost::mt19937 generator;
   for (int i = 0; i < 100; i++) {
-    boost::optional<Move> move = state.random_move(generator);
+    boost::optional<Move> move = moves::random_move(state, generator);
     if (!move)
       break;
     State state2(state);

@@ -24,7 +24,8 @@ namespace bitboard {
     return b == 0;
   }
 
-  inline void for_each_member(Bitboard b, const std::function<void(size_t)> f) {
+  template <typename F>
+  inline void for_each_member(Bitboard b, F f) {
     while (!is_empty(b)) {
       f(scan_forward_with_reset(b));
     }

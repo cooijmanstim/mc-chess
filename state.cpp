@@ -9,6 +9,7 @@
 
 #include "state.hpp"
 #include "direction.hpp"
+#include "targets.hpp"
 
 State::State() {
   set_initial_configuration();
@@ -163,21 +164,6 @@ void State::load_fen(std::string fen) {
   compute_hash();
 }
 
-State::State(const State &that) :
-  us(that.us),
-  them(that.them),
-  board(that.board),
-  castling_rights(that.castling_rights),
-  en_passant_square(that.en_passant_square),
-  occupancy(that.occupancy),
-  their_attacks(that.their_attacks),
-  hash(that.hash),
-  halfmove_clock(that.halfmove_clock)
-{
-}
-
-State::~State() {}
-
 void State::empty_board() {
   for (Color c: colors::values)
     for (Piece p: pieces::values)
@@ -206,21 +192,8 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
   for (squares::Index square: squares::indices) {
     o << ' ';
 
-    bool piece_found = false;
-    for (Color c: colors::values) {
-      for (Piece p: pieces::values) {
-        if (board[c][p] & squares::bitboard(square)) {
-          o << ColoredPiece(c, p).symbol();
-
-          // take this opportunity to ensure no two pieces are on the same square
-          assert(!piece_found);
-          piece_found = true;
-        }
-      }
-    }
-
-    if (!piece_found)
-      o << '.';
+    boost::optional<ColoredPiece> cp = s.colored_piece_at(square);
+    o << (cp ? cp->symbol() : '.');
 
     if ((square + 1) % 8 == 0)
       o << std::endl;
@@ -243,70 +216,6 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
   return o;
 }
 
-std::vector<Move> State::moves() const {
-  // TODO: maybe reserve()
-  std::vector<Move> moves;
-  moves::moves(moves, us, them,
-               board, occupancy,
-               their_attacks, en_passant_square,
-               castling_rights);
-  return moves;
-}
-
-std::vector<Move> State::legal_moves() {
-  std::vector<Move> moves = this->moves();
-  erase_illegal_moves(moves);
-  return moves;
-}
-
-void State::erase_illegal_moves(std::vector<Move>& moves) {
-  for (auto it = moves.begin(); it != moves.end(); ) {
-    Undo undo = make_move(*it);
-    if (their_king_in_check()) {
-      it = moves.erase(it);
-    } else {
-      it++;
-    }
-    unmake_move(undo);
-  }
-}
-
-boost::optional<Move> State::random_move(boost::mt19937& generator) const {
-  // TODO: do better
-  std::vector<Move> moves = this->moves();
-  if (moves.empty())
-    return boost::none;
-  return random_element(moves, generator);
-}
-
-boost::optional<Move> State::make_random_legal_move(boost::mt19937& generator) {
-  // try a pseudolegal move
-  std::vector<Move> moves = this->moves();
-  if (moves.empty())
-    return boost::none;
-  Move move = random_element(moves, generator);
-  Undo undo = make_move(move);
-
-  // if it was legal, fine
-  if (!their_king_in_check())
-    return move;
-
-  // if it was not legal (happens relatively rarely), narrow down to legal moves
-  unmake_move(undo);
-  erase_illegal_moves(moves);
-
-  if (moves.empty())
-    return boost::none;
-  return random_element(moves, generator);
-}
-
-bool State::their_king_in_check() const {
-  // TODO: optimize
-  Bitboard flat_occupancy;
-  board::flatten(occupancy, flat_occupancy);
-  return moves::attacks(us, flat_occupancy, board[us]) & board[them][pieces::king];
-}
-
 boost::optional<ColoredPiece> State::colored_piece_at(squares::Index square) const {
   Bitboard bitboard = squares::bitboard(square);
   for (Color color: colors::values)
@@ -325,6 +234,11 @@ Piece State::piece_at(squares::Index square, Color color) const {
   std::cerr << *this << std::endl;
   print_backtrace();
   throw std::runtime_error("no such piece");
+}
+
+bool State::their_king_in_check() const {
+  // TODO: optimize; implement attacked() and attackers()
+  return targets::attacks(us, flat_occupancy, board[us]) & board[them][pieces::king];
 }
 
 void State::update_castling_rights(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target) {
@@ -549,6 +463,8 @@ void State::make_move_on_occupancy(const Move& move, Undo& undo, const Piece pie
   default:
     throw std::runtime_error(str(boost::format("unhandled MoveType case: %|1$#x|") % move.type()));
   }
+
+  flat_occupancy = occupancy[us] | occupancy[them];
 }
 
 Undo State::make_move(const Move& move) {
@@ -599,9 +515,10 @@ void State::unmake_move(const Undo& undo) {
 
   // in case of castle, move the rook back as well
   if (undo.move.is_castle()) {
-    board[us][pieces::rook] = board[us][pieces::rook]
-      & ~squares::bitboard(castles::rook_target(undo.move.target()))
-      |  squares::bitboard(castles::rook_source(undo.move.target()));
+    board[us][pieces::rook] =
+      (board[us][pieces::rook]
+       & ~squares::bitboard(castles::rook_target(undo.move.target())))
+      | squares::bitboard(castles::rook_source(undo.move.target()));
   }
 
   // replace any captured piece
@@ -616,18 +533,17 @@ void State::unmake_move(const Undo& undo) {
   compute_their_attacks();
 }
 
-void State::compute_occupancy()     { compute_occupancy(occupancy); }
+void State::compute_occupancy()     { compute_occupancy(occupancy, flat_occupancy); }
 void State::compute_their_attacks() { compute_their_attacks(their_attacks); }
 void State::compute_hash()          { compute_hash(hash); }
 
-void State::compute_occupancy(Occupancy& occupancy) {
+void State::compute_occupancy(Occupancy& occupancy, Bitboard& flat_occupancy) {
   board::flatten(board, occupancy);
+  board::flatten(occupancy, flat_occupancy);
 }
 
 void State::compute_their_attacks(Bitboard& their_attacks) {
-  Bitboard flat_occupancy;
-  board::flatten(occupancy, flat_occupancy);
-  their_attacks = moves::attacks(them, flat_occupancy, board[them]);
+  their_attacks = targets::attacks(them, flat_occupancy, board[them]);
 }
 
 void State::compute_hash(Hash &hash) {
@@ -635,7 +551,7 @@ void State::compute_hash(Hash &hash) {
 
   for (Color c: colors::values) {
     for (Piece p: pieces::values) {
-      squares::do_bits(board[c][p], [this, &c, &p, &hash](squares::Index si) {
+      squares::for_each(board[c][p], [this, &c, &p, &hash](squares::Index si) {
           hash ^= hashes::colored_piece_at_square(c, p, si);
         });
     }

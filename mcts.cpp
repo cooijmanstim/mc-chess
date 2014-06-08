@@ -107,7 +107,8 @@ Node* Node::select(State& state) {
 Node* Node::expand(State& state, boost::mt19937& generator) {
   // TODO: computation of legal_moves() involves making the moves and then
   // unmaking them again.  in the loop below we do the same.  maybe combine.
-  std::vector<Move> moves = state.legal_moves();
+  std::vector<Move> moves;
+  moves::legal_moves(moves, state);
 
   Node* children = static_cast<Node*>(::operator new(moves.size() * sizeof(Node)));
   for (size_t i = 0; i < moves.size(); i++) {
@@ -137,9 +138,11 @@ Result Node::rollout(State& state, boost::mt19937& generator) {
   while (true) {
     if (state.drawn_by_50())
       return draw_value;
-    boost::optional<Move> move = state.make_random_legal_move(generator);
+    boost::optional<Move> move = moves::random_move(state, generator);
+    //boost::optional<Move> move = moves::make_random_legal_move(state, generator);
     if (!move)
       break;
+    state.make_move(*move);
 #ifdef MC_EXPENSIVE_RUNTIME_TESTS
     move_history.push_back(*move);
 #endif
