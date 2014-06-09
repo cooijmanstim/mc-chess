@@ -28,29 +28,29 @@ void moves_from_attacks(std::vector<Move>& moves, Bitboard attacks,
 }
 
 
+// if any of the piecewise move generators detects that the opponent's king
+// can be captured, it will return with the moves vector containing only the
+// king capture.
+typedef void(*MoveGenerator)(std::vector<Move>&, State const&, Bitboard);
+const static MoveGenerator piecewise_move_generators[] = {
+  moves::pawn_moves,
+  moves::knight_moves,
+  moves::bishop_moves,
+  moves::rook_moves,
+  moves::queen_moves,
+  moves::king_moves,
+};
+
 // generates pseudolegal moves.  moves that leave the king in check may be
 // generated.  the opponent's only move will be to capture the king.
 void moves::moves(std::vector<Move>& moves, State const& state) {
-  moves.reserve(50);
-
-  // if our king has been captured, game over
-  if (bitboard::is_empty(state.board[state.us][pieces::king]))
+  if (state.game_definitely_over())
     return;
 
-  // if any of the piecewise move generators detects that the opponent's king
-  // can be captured, it will return with the moves vector containing only the
-  // king capture.
-  typedef void(*MoveGenerator)(std::vector<Move>&, State const&, Bitboard);
-  const static MoveGenerator move_generators[] = {
-    pawn_moves,
-    knight_moves,
-    bishop_moves,
-    rook_moves,
-    queen_moves,
-    king_moves,
-  };
+  moves.reserve(50);
+
   for (Piece piece: pieces::values) {
-    (*move_generators[piece])(moves, state, state.board[state.us][piece]);
+    (*piecewise_move_generators[piece])(moves, state, state.board[state.us][piece]);
     if (moves.size() == 1 && moves[0].is_king_capture())
       return;
   }
@@ -205,8 +205,29 @@ void moves::erase_illegal_moves(std::vector<Move>& moves, State& state) {
   }
 }
 
+boost::optional<Move> moves::maybe_fast_random_move(State const& state, boost::mt19937& generator) {
+  squares::Index source = squares::random_index(state.occupancy[state.us], generator);
+  Piece piece = state.piece_at(source, state.us);
+  std::vector<Move> moves;
+  (*piecewise_move_generators[piece])(moves, state, state.board[state.us][piece]);
+  if (moves.empty())
+    return boost::none;
+  return random_element(moves, generator);
+}
+
 boost::optional<Move> moves::random_move(State const& state, boost::mt19937& generator) {
-  // TODO: do better
+  if (state.game_definitely_over())
+    return boost::none;
+
+  // try the fast method a couple of times; if it fails repeatedly then there
+  // may be many pieces with no moves available to them.  then just generate
+  // all moves and select one of those.
+  for (int i = 0; i < 3; i++) {
+    boost::optional<Move> move = maybe_fast_random_move(state, generator);
+    if (move)
+      return move;
+  }
+
   std::vector<Move> moves;
   moves::moves(moves, state);
   if (moves.empty())
@@ -214,24 +235,37 @@ boost::optional<Move> moves::random_move(State const& state, boost::mt19937& gen
   return random_element(moves, generator);
 }
 
-boost::optional<Move> moves::make_random_legal_move(State& state, boost::mt19937& generator) {
-  // try a pseudolegal move
-  std::vector<Move> moves;
-  moves::moves(moves, state);
-  if (moves.empty())
+boost::optional<Move> moves::maybe_make_fast_random_legal_move(State& state, boost::mt19937& generator) {
+  boost::optional<Move> move = maybe_fast_random_move(state, generator);
+  if (!move)
     return boost::none;
-  Move move = random_element(moves, generator);
-  Undo undo = state.make_move(move);
-
-  // if it was legal, fine
-  if (!state.their_king_in_check())
+  Undo undo = state.make_move(*move);
+  if (state.their_king_in_check()) {
+    state.unmake_move(undo);
+    return boost::none;
+  } else {
     return move;
+  }
+}
 
-  // if it was not legal (happens relatively rarely), narrow down to legal moves
-  state.unmake_move(undo);
-  erase_illegal_moves(moves, state);
+boost::optional<Move> moves::make_random_legal_move(State& state, boost::mt19937& generator) {
+  if (state.game_definitely_over())
+    return boost::none;
 
+  // try a pseudolegal move
+  for (int i = 0; i < 5; i++) {
+    boost::optional<Move> move = maybe_make_fast_random_legal_move(state, generator);
+    if (move)
+      return move;
+  }
+
+  // if no move was found, generate all legal moves and choose from there
+  std::vector<Move> moves;
+  legal_moves(moves, state);
   if (moves.empty())
     return boost::none;
-  return random_element(moves, generator);
+
+  Move move = random_element(moves, generator);
+  state.make_move(move);
+  return move;
 }

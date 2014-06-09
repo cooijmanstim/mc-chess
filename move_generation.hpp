@@ -25,6 +25,8 @@ namespace moves {
   void castle_moves(std::vector<Move>& moves, State const& state);
   void legal_moves(std::vector<Move>& moves, State& state);
   void erase_illegal_moves(std::vector<Move>& moves, State& state);
+  boost::optional<Move> maybe_fast_random_move(State const& state, boost::mt19937& generator);
   boost::optional<Move> random_move(State const& state, boost::mt19937& generator);
+  boost::optional<Move> maybe_make_fast_random_legal_move(State& state, boost::mt19937& generator);
   boost::optional<Move> make_random_legal_move(State& state, boost::mt19937& generator);
 }

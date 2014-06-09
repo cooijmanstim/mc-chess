@@ -237,8 +237,7 @@ Piece State::piece_at(squares::Index square, Color color) const {
 }
 
 bool State::their_king_in_check() const {
-  // TODO: optimize; implement attacked() and attackers()
-  return targets::attacks(us, flat_occupancy, board[us]) & board[them][pieces::king];
+  return targets::any_attacked(board[them][pieces::king], flat_occupancy, us, board[us]);
 }
 
 void State::update_castling_rights(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target) {
@@ -568,11 +567,22 @@ void State::compute_hash(Hash &hash) {
     hash ^= hashes::en_passant(en_passant_square);
 }
 
+bool State::our_king_captured() const {
+  return bitboard::is_empty(board[us][pieces::king]);
+}
+
+// may return false on games that are over (too expensive to generate moves),
+// but will not return true on games that are not over
+bool State::game_definitely_over() const {
+  return drawn_by_50() || our_king_captured();
+}
+
 bool State::drawn_by_50() const {
   return halfmove_clock >= 50;
 }
 
 // NOTE: assumes game is over and no moves have been made since the game was over
+// (game is over as soon as it is drawn_by_50 or there are no more moves)
 boost::optional<Color> State::winner() const {
   if (drawn_by_50())
     return boost::none;

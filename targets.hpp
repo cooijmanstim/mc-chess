@@ -161,10 +161,10 @@ namespace targets {
   inline Bitboard attacks(Color us, Bitboard occupancy, Halfboard const& attackers) {
     Bitboard attacks = 0;
     
-    for (PawnAttackType pa: get_pawn_attack_types())
+    for (const PawnAttackType &pa: get_pawn_attack_types())
       attacks |= pawn_attacks(attackers[pieces::pawn], get_pawn_dingbats()[us], pa);
     
-    for (KnightAttackType ka: get_knight_attack_types())
+    for (const KnightAttackType &ka: get_knight_attack_types())
       attacks |= ka.attacks(attackers[pieces::knight]);
     
     squares::for_each(attackers[pieces::bishop], [&](squares::Index source) {
@@ -180,5 +180,42 @@ namespace targets {
       });
     
     return attacks | king_attacks(attackers[pieces::king]);
+  }
+
+  inline bool any_attacked(Bitboard targets, Bitboard occupancy, Color attacker, Halfboard const& attackers) {
+    Color defender = colors::opposite(attacker);
+
+    // for each piece type, pretend there is a piece of that type owned by the
+    // defending player on the targets.  if this piece attacks an attacker of
+    // the same piece type, the at least one of the targets is attacked.
+
+    // TODO: i suspect these loops are not optimized out the way i'd like them
+    // to be
+    for (const PawnAttackType &pa: get_pawn_attack_types()) {
+      if (pawn_attacks(targets, get_pawn_dingbats()[defender], pa) & attackers[pieces::pawn])
+        return true;
+    }
+
+    for (const KnightAttackType &ka: get_knight_attack_types()) {
+      if (ka.attacks(targets) & attackers[pieces::knight])
+        return true;
+    }
+
+    if (squares::any(targets, [&](squares::Index source) {
+          Bitboard diagonal_attacks   = bishop_attacks(source, occupancy);
+          Bitboard orthogonal_attacks = rook_attacks(source, occupancy);
+          return
+            (diagonal_attacks   & (attackers[pieces::bishop] |
+                                   attackers[pieces::queen]))
+            |
+            (orthogonal_attacks & (attackers[pieces::rook] |
+                                   attackers[pieces::queen]));
+        }))
+      return true;
+
+    if (king_attacks(targets) & attackers[pieces::king])
+      return true;
+
+    return false;
   }
 }

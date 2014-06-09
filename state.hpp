@@ -68,6 +68,8 @@ public:
   void compute_their_attacks(Bitboard& their_attacks);
   void compute_hash(Hash &hash);
 
+  bool our_king_captured() const;
+  bool game_definitely_over() const;
   bool drawn_by_50() const;
   boost::optional<Color> winner() const;
 };
