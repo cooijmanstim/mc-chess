@@ -1,5 +1,7 @@
 #pragma once
 
+#include <boost/random.hpp>
+
 #include "prettyprint.hpp"
 
 // TODO: solve this moare betterlye
@@ -16,3 +18,9 @@ class Move;
 void dump_for_debug(State state, std::vector<Move> moves);
 
 std::vector<std::string> words(std::string string);
+
+template <typename T>
+T random_element(std::vector<T> const& elements, boost::mt19937& generator) {
+  boost::uniform_int<> distribution(0, elements.size() - 1);
+  return elements.at(distribution(generator));
+}

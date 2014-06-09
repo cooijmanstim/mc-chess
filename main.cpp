@@ -129,7 +129,7 @@ void interface_with(std::istream& in, std::ostream& out) {
           send_command("feature " + feature);
       }},
     // TODO: handle these as soon as we get a use case
-    {"accepted", unsupported},
+    {"accepted", do_nothing},
     {"rejected", unsupported},
     {"new", [&](ARGV argv) {
         protocol_assert(!agent_color, "expected \"new\" only in force mode");

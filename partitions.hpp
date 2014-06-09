@@ -2,6 +2,8 @@
 
 #include <map>
 
+#include <boost/random.hpp>
+
 #include "bitboard.hpp"
 #include "direction.hpp"
 
@@ -26,10 +28,25 @@ namespace squares {
     return static_cast<Index>(bitboard::scan_forward(b));
   }
 
-  inline void do_bits(Bitboard b, std::function<void(squares::Index)> f) {
-    bitboard::for_each_member(b, [&f](size_t index) {
+  inline Index random_index(Bitboard b, boost::mt19937& generator) {
+    return static_cast<Index>(bitboard::random_index(b, generator));
+  }
+
+  template <typename F>
+  inline void for_each(Bitboard b, F f) {
+    bitboard::for_each_member(b, [&](size_t index) {
         f(static_cast<squares::Index>(index));
       });
+  }
+
+  template <typename F>
+  inline bool any(Bitboard b, F f) {
+    while (!bitboard::is_empty(b)) {
+      squares::Index index = static_cast<squares::Index>(bitboard::scan_forward_with_reset(b));
+      if (f(index))
+        return true;
+    }
+    return false;
   }
 }
 

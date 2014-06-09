@@ -51,7 +51,7 @@ Move notation::algebraic::parse(std::string string, const State& state) {
     };
   }
 
-  std::vector<Move> candidates = state.moves();
+  std::vector<Move> candidates = moves::moves(state);
 
   for (auto it = candidates.begin(); it != candidates.end(); ) {
     if (!predicate(*it)) {
@@ -79,7 +79,7 @@ Move notation::coordinate::parse(std::string string, const State& state) {
   if (m[3].matched)
     promotion = pieces::type_from_name(std::string(m[3].first, m[3].second));
 
-  for (Move move: state.moves()) {
+  for (Move move: moves::moves(state)) {
     if (move.source() != source)
       continue;
     if (move.target() != target)

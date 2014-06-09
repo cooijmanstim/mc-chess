@@ -1,4 +1,5 @@
 #include "mcts.hpp"
+#include "notation.hpp"
 
 using namespace mcts;
 
@@ -104,16 +105,18 @@ Node* Node::select(State& state) {
 }
 
 Node* Node::expand(State& state, boost::mt19937& generator) {
-  std::vector<Move> moves = state.moves();
+  // TODO: computation of legal_moves() involves making the moves and then
+  // unmaking them again.  in the loop below we do the same.  maybe combine.
+  std::vector<Move> moves;
+  moves::legal_moves(moves, state);
+
   Node* children = static_cast<Node*>(::operator new(moves.size() * sizeof(Node)));
   for (size_t i = 0; i < moves.size(); i++) {
     // to avoid having to keep track of unexplored_moves, and to ensure the
     // children sequence is constant-size, construct all children right away.
-    // TODO: doing this requires copying state.  if we're copying state anyway,
-    // maybe might as well do a rollout for each of the children.
-    State child_state(state);
-    child_state.make_move(moves[i]);
-    new(&children[i]) Node(this, moves[i], child_state);
+    Undo undo = state.make_move(moves[i]);
+    new(&children[i]) Node(this, moves[i], state);
+    state.unmake_move(undo);
   }
   this->child_count = moves.size();
   this->children = children;
@@ -135,13 +138,14 @@ Result Node::rollout(State& state, boost::mt19937& generator) {
   while (true) {
     if (state.drawn_by_50())
       return draw_value;
-    boost::optional<Move> move = state.random_move(generator);
+    boost::optional<Move> move = moves::random_move(state, generator);
+    //boost::optional<Move> move = moves::make_random_legal_move(state, generator);
     if (!move)
       break;
+    state.make_move(*move);
 #ifdef MC_EXPENSIVE_RUNTIME_TESTS
     move_history.push_back(*move);
 #endif
-    state.make_move(*move);
   }
   boost::optional<Color> winner = state.winner();
   if (!winner)
@@ -212,8 +216,31 @@ void Node::do_children(std::function<void(Node*)> f) {
   }
 }
 
-void Node::print_evaluations() {
+void Node::print_statistics() {
   do_children([](Node* child) {
     std::cout << *child->last_move << " " << child->visit_count << " " << winrate(child) << " " << uct_score(child) << std::endl;
   });
+  std::cout << visit_count << " " << winrate(this) << std::endl;
+}
+
+void Node::graphviz(std::ostream& os) {
+  auto hash_as_id = [this](Hash hash) {
+    return str(boost::format("\"%1$#8x\"") % hash);
+  };
+  os << hash_as_id(state_hash)
+     << "[label=\"{"
+     << (last_move ? notation::coordinate::format(*last_move) : "-")
+     << " | "
+     << winrate(this) << " (" << total_result << "/" << visit_count << ") "
+     << " | "
+     << (parent ? str(boost::format("%f") % uct_score(this)) : "-")
+     << "}\"];"
+     << std::endl;
+  do_children([&](Node* child) {
+      // to keep the graph small
+      if (child->visit_count == 0)
+        return;
+      child->graphviz(os);
+      os << hash_as_id(state_hash) << " -> " << hash_as_id(child->state_hash) << ";" << std::endl;
+    });
 }

@@ -11,6 +11,7 @@
 #include "bitboard.hpp"
 #include "move_generation.hpp"
 #include "hash.hpp"
+#include "undo.hpp"
 
 class State {
 public:
@@ -31,13 +32,12 @@ public:
 
   // redundant
   Occupancy occupancy;
+  Bitboard flat_occupancy;
   Bitboard their_attacks;
   Hash hash;
 
   State();
   State(std::string fen);
-  ~State();
-  State(const State &that);
   bool operator==(const State &that) const;
 
   void empty_board();
@@ -47,26 +47,29 @@ public:
 
   friend std::ostream& operator<<(std::ostream& o, const State& s);
 
-  std::vector<Move> moves() const;
-  boost::optional<Move> random_move(boost::mt19937& generator) const;
-
-  void make_move(const Move& m);
-
   boost::optional<ColoredPiece> colored_piece_at(squares::Index square) const;
-  Piece moving_piece(const Move& move, const Halfboard& us) const;
-  void make_move_on_their_halfboard (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
-  void make_move_on_our_halfboard   (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
-  void update_castling_rights       (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
-  void update_en_passant_square     (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
-  void make_move_on_occupancy       (const Move& move, const Piece piece, const Bitboard source, const Bitboard target);
+  Piece piece_at(squares::Index square, Color color) const;
+  bool their_king_in_check() const;
+
+  void update_castling_rights(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
+  void update_en_passant_square(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
+  void make_move_on_their_halfboard(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
+  void make_move_on_our_halfboard(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
+  void make_move_on_occupancy(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
+
+  Undo make_move(const Move& move);
+  void unmake_move(const Undo& undo);
 
   void compute_occupancy();
   void compute_their_attacks();
   void compute_hash();
-  void compute_occupancy(Occupancy& occupancy);
-  void compute_their_attacks(Bitboard& their_attacks);
-  void compute_hash(Hash& hash);
 
+  void compute_occupancy(Occupancy& occupancy, Bitboard& flat_occupancy);
+  void compute_their_attacks(Bitboard& their_attacks);
+  void compute_hash(Hash &hash);
+
+  bool our_king_captured() const;
+  bool game_definitely_over() const;
   bool drawn_by_50() const;
   boost::optional<Color> winner() const;
 };

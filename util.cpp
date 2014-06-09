@@ -44,3 +44,4 @@ std::vector<std::string> words(std::string string) {
   boost::algorithm::split_regex(words, boost::algorithm::trim_copy(string), separator);
   return words;
 }
+

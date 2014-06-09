@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <functional>
 
+#include <boost/random.hpp>
+
 #include "bitboard.hpp"
 
 typedef uint64_t Bitboard;
@@ -24,7 +26,8 @@ namespace bitboard {
     return b == 0;
   }
 
-  inline void for_each_member(Bitboard b, const std::function<void(size_t)> f) {
+  template <typename F>
+  inline void for_each_member(Bitboard b, F f) {
     while (!is_empty(b)) {
       f(scan_forward_with_reset(b));
     }
@@ -36,5 +39,17 @@ namespace bitboard {
 
   inline size_t cardinality(const Bitboard b) {
     return __builtin_popcountll(b);
+  }
+
+  inline size_t random_index(Bitboard b, boost::mt19937& generator) {
+    assert(!is_empty(b));
+    size_t n = cardinality(b);
+    boost::uniform_int<> distribution(0, n - 1);
+    size_t k = distribution(generator);
+    while (k > 0) {
+      scan_forward_with_reset(b);
+      --k;
+    }
+    return scan_forward(b);
   }
 }

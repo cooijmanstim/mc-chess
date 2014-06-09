@@ -31,8 +31,10 @@ public:
   squares::Index source() const;
   squares::Index target() const;
 
+  bool is_castle() const;
   bool is_capture() const;
   bool is_king_capture() const;
+  bool is_promotion() const;
   boost::optional<Piece> promotion() const;
 
   bool operator==(const Move& that) const;
