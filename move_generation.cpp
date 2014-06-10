@@ -219,13 +219,17 @@ boost::optional<Move> moves::random_move(State const& state, boost::mt19937& gen
   if (state.game_definitely_over())
     return boost::none;
 
-  // try the fast method a couple of times; if it fails repeatedly then there
-  // may be many pieces with no moves available to them.  then just generate
-  // all moves and select one of those.
-  for (int i = 0; i < 3; i++) {
-    boost::optional<Move> move = maybe_fast_random_move(state, generator);
-    if (move)
-      return move;
+  // maybe_fast_random_move doesn't always find king captures if they are
+  // available.
+  if (!state.their_king_in_check()) {
+    // try the fast method a couple of times; if it fails repeatedly then there
+    // may be many pieces with no moves available to them.  then just generate
+    // all moves and select one of those.
+    for (int i = 0; i < 3; i++) {
+      boost::optional<Move> move = maybe_fast_random_move(state, generator);
+      if (move)
+        return move;
+    }
   }
 
   std::vector<Move> moves;
