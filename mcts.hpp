@@ -42,7 +42,8 @@ namespace mcts {
     Node* select_by(std::function<double(Node*)> key);
     void do_children(std::function<void(Node*)> f);
     Move best_move();
-    void print_statistics();
+    void print_statistics(std::ostream& os);
+    void print_principal_variation(std::ostream& os);
     void graphviz(std::ostream& os);
   };
 }

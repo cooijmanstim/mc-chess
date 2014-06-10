@@ -417,14 +417,34 @@ BOOST_AUTO_TEST_CASE(mcts_agent) {
   decision.get();
 }
 
+
+BOOST_AUTO_TEST_CASE(mcts_agent_certain_win) {
+  // observed in testing; black has two moves, Kxh4 and g5.  after g5,
+  // Qxg5 mates but is estimated to have ~2/3 winrate.  are there that
+  // many draws due to 50-move rule when simulating with pseudolegal moves,
+  // or is something else going on?
+  State state("rn4nr/p4N1p/6p1/1p1Q3k/1Pp4P/8/PP1PPP1P/RNB1KBR1 b Q - 0 0");
+  MCTSAgent agent(2);
+  agent.set_state(state);
+  auto decision = agent.start_decision();
+  decision.get();
+  agent.advance_state(Move(squares::g6, squares::g5, move_types::normal));
+  decision = agent.start_decision();
+  decision.get();
+}
+
 BOOST_AUTO_TEST_CASE(mcts_endgame_graphviz) {
   State state("r1bk3r/p2p1pNp/n2B1n2/1p1NP2P/6P1/3P4/P1P1K3/q5b1 w - - 0 23");
   boost::mt19937 generator;
   mcts::Node tree(0, boost::none, state);
   for (int i = 0; i < 1e4; i++)
     tree.sample(state, generator);
+  std::cout << "mcts results for state: " << std::endl;
   std::cout << state << std::endl;
-  tree.print_statistics();
+  std::cout << "candidate moves: " << std::endl;
+  tree.print_statistics(std::cout);
+  std::cout << "principal variation: " << std::endl;
+  tree.print_principal_variation(std::cout);
   //std::cout << "digraph G {" << std::endl;
   //tree.graphviz(std::cout);
   //std::cout << "}" << std::endl;

@@ -216,11 +216,19 @@ void Node::do_children(std::function<void(Node*)> f) {
   }
 }
 
-void Node::print_statistics() {
-  do_children([](Node* child) {
-    std::cout << *child->last_move << " " << child->visit_count << " " << winrate(child) << " " << uct_score(child) << std::endl;
+void Node::print_statistics(std::ostream& os) {
+  do_children([&](Node* child) {
+    os << *child->last_move << " " << child->visit_count << " " << winrate(child) << " " << uct_score(child) << std::endl;
   });
-  std::cout << visit_count << " " << winrate(this) << std::endl;
+  os << visit_count << " " << winrate(this) << std::endl;
+}
+
+void Node::print_principal_variation(std::ostream& os) {
+  Node* child = select_by(most_visited);
+  if (!child)
+    return;
+  os << *child->last_move << " " << child->visit_count << " " << winrate(child) << std::endl;
+  child->print_principal_variation(os);
 }
 
 void Node::graphviz(std::ostream& os) {

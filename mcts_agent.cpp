@@ -99,7 +99,12 @@ boost::future<Move> MCTSAgent::start_decision() {
   start_pondering();
   return boost::async([this]() {
       boost::this_thread::sleep_for(boost::chrono::seconds(10));
-      node->print_statistics();
+      std::cout << "mcts result for state: " << std::endl;
+      std::cout << *state << std::endl;
+      std::cout << "candidate moves: " << std::endl;
+      node->print_statistics(std::cout);
+      std::cout << "principal variation: " << std::endl;
+      node->print_principal_variation(std::cout);
       return node->best_move();
     });
 }
