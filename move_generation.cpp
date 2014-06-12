@@ -104,7 +104,7 @@ void moves::bishop_moves(std::vector<Move>& moves, State const& state, Bitboard 
 }
 
 void moves::knight_moves(std::vector<Move>& moves, State const& state, Bitboard sources) {
-  for (const targets::KnightAttackType& ka: targets::get_knight_attack_types()) {
+  for (const targets::KnightAttackType& ka: targets::knight_attack_types) {
     Bitboard targets = ka.attacks(sources);
 
     auto source_fn = [&](squares::Index target) {
@@ -127,7 +127,7 @@ void moves::knight_moves(std::vector<Move>& moves, State const& state, Bitboard 
 void moves::pawn_moves(std::vector<Move>& moves, State const& state, Bitboard sources) {
   // TODO: clean up this mess (though pawn behavior is inherently complicated -_-)
 
-  const targets::PawnDingbat &pd = targets::get_pawn_dingbats()[state.us];
+  const targets::PawnDingbat &pd = targets::pawn_dingbats[state.us];
 
   // single push
   auto single_source_fn = [&](squares::Index target) {
@@ -152,7 +152,7 @@ void moves::pawn_moves(std::vector<Move>& moves, State const& state, Bitboard so
                             move_types::double_push);
 
   // captures
-  for (const targets::PawnAttackType& pa: targets::get_pawn_attack_types()) {
+  for (const targets::PawnAttackType& pa: targets::pawn_attack_types) {
     signed direction = pd.leftshift - pd.rightshift + pa.leftshift - pa.rightshift;
 
     auto capture_source_fn = [&](squares::Index target) {

@@ -92,40 +92,26 @@ namespace targets {
     return a1h8_onto_rank(attacks, rank);
   }
 
-  inline const std::vector<PawnDingbat>& get_pawn_dingbats() {
-    using namespace directions;
-    static std::vector<PawnDingbat> pawn_dingbats = {
-      { vertical, 0, ranks::bitboards::_4, ranks::bitboards::_8 },
-      { 0, vertical, ranks::bitboards::_5, ranks::bitboards::_1 },
-    };
-    return pawn_dingbats;
-  }
-  
-  inline const std::vector<PawnAttackType>& get_pawn_attack_types() {
-    using namespace files::bitboards;
-    using namespace directions;
-    static std::vector<PawnAttackType> result = {
-      { 0, horizontal, h },
-      { horizontal, 0, a },
-    };
-    return result;
-  }
-  
-  inline const std::vector<KnightAttackType>& get_knight_attack_types() {
-    using namespace files::bitboards;
-    using namespace directions;
-    static std::vector<KnightAttackType> result = {
-      {2*vertical +   horizontal,                         0, a     },
-      {               horizontal, 2*vertical               , a     },
-      {2*vertical               ,                horizontal, h     },
-      {                        0, 2*vertical +   horizontal, h     },
-      {  vertical + 2*horizontal,                         0, a | b },
-      {             2*horizontal,   vertical               , a | b },
-      {  vertical               ,              2*horizontal, g | h },
-      {                        0,   vertical + 2*horizontal, g | h },
-    };
-    return result;
-  }
+  const PawnDingbat pawn_dingbats[] = {
+    { directions::vertical, 0, ranks::bitboards::_4, ranks::bitboards::_8 },
+    { 0, directions::vertical, ranks::bitboards::_5, ranks::bitboards::_1 },
+  };
+    
+  const PawnAttackType pawn_attack_types[] = {
+    { 0, directions::horizontal, files::bitboards::h },
+    { directions::horizontal, 0, files::bitboards::a },
+  };
+    
+  const KnightAttackType knight_attack_types[] = {
+    {2*directions::vertical + directions::horizontal, 0, files::bitboards::a},
+    {directions::horizontal, 2*directions::vertical, files::bitboards::a},
+    {2*directions::vertical, directions::horizontal, files::bitboards::h},
+    {0, 2*directions::vertical + directions::horizontal, files::bitboards::h},
+    {directions::vertical + 2*directions::horizontal, 0, files::bitboards::a | files::bitboards::b },
+    {2*directions::horizontal, directions::vertical, files::bitboards::a | files::bitboards::b },
+    {directions::vertical, 2*directions::horizontal, files::bitboards::g | files::bitboards::h },
+    {0, directions::vertical + 2*directions::horizontal, files::bitboards::g | files::bitboards::h },
+  };
   
   inline Bitboard pawn_attacks(Bitboard pawn, PawnDingbat const& pd, PawnAttackType const& pa) {
     return (pawn << (pd.leftshift + pa.leftshift) >> (pd.rightshift + pa.rightshift)) & ~pa.badtarget;
@@ -161,10 +147,10 @@ namespace targets {
   inline Bitboard attacks(Color us, Bitboard occupancy, Halfboard const& attackers) {
     Bitboard attacks = 0;
     
-    for (const PawnAttackType &pa: get_pawn_attack_types())
-      attacks |= pawn_attacks(attackers[pieces::pawn], get_pawn_dingbats()[us], pa);
+    for (const PawnAttackType &pa: pawn_attack_types)
+      attacks |= pawn_attacks(attackers[pieces::pawn], pawn_dingbats[us], pa);
     
-    for (const KnightAttackType &ka: get_knight_attack_types())
+    for (const KnightAttackType &ka: knight_attack_types)
       attacks |= ka.attacks(attackers[pieces::knight]);
     
     squares::for_each(attackers[pieces::bishop], [&](squares::Index source) {
@@ -189,14 +175,12 @@ namespace targets {
     // defending player on the targets.  if this piece attacks an attacker of
     // the same piece type, the at least one of the targets is attacked.
 
-    // TODO: i suspect these loops are not optimized out the way i'd like them
-    // to be
-    for (const PawnAttackType &pa: get_pawn_attack_types()) {
-      if (pawn_attacks(targets, get_pawn_dingbats()[defender], pa) & attackers[pieces::pawn])
+    for (const PawnAttackType &pa: pawn_attack_types) {
+      if (pawn_attacks(targets, pawn_dingbats[defender], pa) & attackers[pieces::pawn])
         return true;
     }
 
-    for (const KnightAttackType &ka: get_knight_attack_types()) {
+    for (const KnightAttackType &ka: knight_attack_types) {
       if (ka.attacks(targets) & attackers[pieces::knight])
         return true;
     }
