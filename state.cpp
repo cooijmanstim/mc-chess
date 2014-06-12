@@ -240,6 +240,12 @@ bool State::their_king_in_check() const {
   return targets::any_attacked(board[them][pieces::king], flat_occupancy, us, board[us]);
 }
 
+bool State::can_castle(Castle castle) const {
+  return castling_rights[us][castle]
+    && !(castles::safe_squares(us, castle) & their_attacks)
+    && !(castles::free_squares(us, castle) & flat_occupancy);
+}
+
 void State::update_castling_rights(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target) {
   undo.prior_castling_rights = castling_rights;
 

@@ -50,6 +50,7 @@ public:
   boost::optional<ColoredPiece> colored_piece_at(squares::Index square) const;
   Piece piece_at(squares::Index square, Color color) const;
   bool their_king_in_check() const;
+  bool can_castle(Castle castle) const;
 
   void update_castling_rights(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
   void update_en_passant_square(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);

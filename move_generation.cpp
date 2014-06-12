@@ -180,10 +180,7 @@ void moves::pawn_moves(std::vector<Move>& moves, State const& state, Bitboard so
 
 void moves::castle_moves(std::vector<Move>& moves, State const& state) {
   for (Castle castle: castles::values) {
-    // TODO: extract method state.can_castle(castle) which calls out to targets::is_attacked etc
-    if (state.castling_rights[state.us][castle]
-        && !(castles::safe_squares(state.us, castle) & state.their_attacks)
-        && !(castles::free_squares(state.us, castle) & state.flat_occupancy))
+    if (state.can_castle(castle))
       moves.push_back(Move::castle(state.us, castle));
   }
 }
