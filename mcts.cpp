@@ -145,6 +145,7 @@ Result Node::rollout(State& state, boost::mt19937& generator) {
     state.make_move(*move);
 #ifdef MC_EXPENSIVE_RUNTIME_TESTS
     move_history.push_back(*move);
+    state.require_consistent();
 #endif
   }
   boost::optional<Color> winner = state.winner();
