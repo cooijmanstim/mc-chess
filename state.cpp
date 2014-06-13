@@ -249,12 +249,9 @@ bool State::operator==(const State &that) const {
 }
 
 std::ostream& operator<<(std::ostream& o, const State& s) {
-  Board board(s.board);
-  // squares run from white to black, output runs from top to bottom.  flip
-  // the board to get white on the bottom.
-  board::flip_vertically(board);
-
   for (squares::Index square: squares::indices) {
+    square = squares::flip_vertically(square);
+
     o << ' ';
 
     boost::optional<ColoredPiece> cp = s.colored_piece_at(square);
