@@ -309,10 +309,7 @@ BOOST_AUTO_TEST_CASE(move_randomly) {
     if (!move)
       break;
     state.make_move(*move);
-    Hash hash;
-    state.compute_hash(hash);
-    BOOST_CHECK(hash != 0); // probably not zero
-    BOOST_CHECK_EQUAL(state.hash, hash);
+    state.require_consistent();
   }
 }
 

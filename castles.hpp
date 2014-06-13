@@ -105,6 +105,15 @@ namespace castles {
     }
   }
 
+  inline squares::Index rook_source(Color color, Castle castle) {
+    return rook_source(king_target(color, castle));
+  }
+
+  inline squares::Index rook_target(Color color, Castle castle) {
+    return rook_target(king_target(color, castle));
+  }
+
+  // FIXME: primitive const&
   inline boost::optional<Castle> involving(const squares::Index& rook_source, const Color color) {
     using namespace squares;
     using namespace colors;

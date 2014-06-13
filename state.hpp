@@ -44,6 +44,8 @@ public:
   void set_initial_configuration();
   void load_fen(std::string fen);
   std::string dump_fen();
+  boost::optional<std::string> inconsistency() const;
+  void require_consistent() const;
 
   friend std::ostream& operator<<(std::ostream& o, const State& s);
 
@@ -60,9 +62,9 @@ public:
   void compute_their_attacks();
   void compute_hash();
 
-  void compute_occupancy(Occupancy& occupancy, Bitboard& flat_occupancy);
-  void compute_their_attacks(Bitboard& their_attacks);
-  void compute_hash(Hash &hash);
+  void compute_occupancy(Occupancy& occupancy, Bitboard& flat_occupancy) const;
+  void compute_their_attacks(Bitboard& their_attacks) const;
+  void compute_hash(Hash &hash) const;
 
   boost::optional<ColoredPiece> colored_piece_at(squares::Index square) const;
   Piece piece_at(squares::Index square, Color color) const;

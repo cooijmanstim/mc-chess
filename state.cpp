@@ -170,6 +170,71 @@ void State::empty_board() {
       board[c][p] = 0;
 }
 
+boost::optional<std::string> State::inconsistency() const {
+  for (squares::Index si: squares::indices) {
+    Bitboard square = squares::bitboard(si);
+    bool found = false;
+    for (Color c: colors::values) {
+      for (Piece p: pieces::values) {
+        if (board[c][p] & square) {
+          if (found)
+            return str(boost::format("multiple pieces on square %1%") % si);
+          found = true;
+        }
+      }
+    }
+  }
+
+  if (en_passant_square) {
+    Bitboard double_pushed_pawn = us == colors::white
+      ? en_passant_square >> directions::vertical
+      : en_passant_square << directions::vertical;
+    boost::optional<ColoredPiece> piece = colored_piece_at(squares::index(double_pushed_pawn));
+    if (piece != ColoredPiece(them, pieces::pawn))
+      return std::string("no double pushed pawn in front of en-passant square");
+  }
+
+  for (Color color: colors::values) {
+    for (Castle castle: castles::values) {
+      if (castling_rights[color][castle]) {
+        if (!(board[color][pieces::king] & squares::bitboard(castles::king_source(color, castle))))
+          return str(boost::format("king misplaced; no right to castle %1%") % castles::symbol(color, castle));
+        if (!(board[color][pieces::rook] & squares::bitboard(castles::rook_source(color, castle))))
+          return str(boost::format("rook misplaced; no right to castle %1%") % castles::symbol(color, castle));
+      }
+    }
+  }
+
+  Occupancy occupancy;
+  board::flatten(this->board, occupancy);
+  if (occupancy != this->occupancy)
+    return std::string("occupancy out of sync");
+
+  Bitboard flat_occupancy;
+  board::flatten(this->board, flat_occupancy);
+  if (flat_occupancy != this->flat_occupancy)
+    return std::string("flat occupancy out of sync");
+
+  Hash hash;
+  compute_hash(hash);
+  if (hash != this->hash)
+    return std::string("hash out of sync");
+
+  if (bitboard::cardinality(occupancy[us]) > 16)
+    return std::string("we have more than 16 pieces");
+
+  if (bitboard::cardinality(occupancy[them]) > 16)
+    return std::string("they have more than 16 pieces");
+
+  return boost::none;
+}
+
+void State::require_consistent() const {
+  boost::optional<std::string> inconsistency = this->inconsistency();
+  if (inconsistency)
+    throw new std::runtime_error(str(boost::format("state inconsistent: %1%") % *inconsistency));
+}
+
 bool State::operator==(const State &that) const {
   if (this == &that)
     return true;
@@ -512,16 +577,16 @@ void State::compute_occupancy()     { compute_occupancy(occupancy, flat_occupanc
 void State::compute_their_attacks() { compute_their_attacks(their_attacks); }
 void State::compute_hash()          { compute_hash(hash); }
 
-void State::compute_occupancy(Occupancy& occupancy, Bitboard& flat_occupancy) {
+void State::compute_occupancy(Occupancy& occupancy, Bitboard& flat_occupancy) const {
   board::flatten(board, occupancy);
   board::flatten(occupancy, flat_occupancy);
 }
 
-void State::compute_their_attacks(Bitboard& their_attacks) {
+void State::compute_their_attacks(Bitboard& their_attacks) const {
   their_attacks = targets::attacks(them, flat_occupancy, board[them]);
 }
 
-void State::compute_hash(Hash &hash) {
+void State::compute_hash(Hash &hash) const {
   hash = 0;
 
   for (Color c: colors::values) {
