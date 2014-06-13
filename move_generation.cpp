@@ -193,7 +193,7 @@ void moves::legal_moves(std::vector<Move>& moves, State& state) {
 void moves::erase_illegal_moves(std::vector<Move>& moves, State& state) {
   for (auto it = moves.begin(); it != moves.end(); ) {
     Undo undo = state.make_move(*it);
-    if (state.their_king_in_check()) {
+    if (state.their_king_attacked()) {
       it = moves.erase(it);
     } else {
       it++;
@@ -218,7 +218,7 @@ boost::optional<Move> moves::random_move(State const& state, boost::mt19937& gen
 
   // maybe_fast_random_move doesn't always find king captures if they are
   // available.
-  if (!state.their_king_in_check()) {
+  if (!state.their_king_attacked()) {
     // try the fast method a couple of times; if it fails repeatedly then there
     // may be many pieces with no moves available to them.  then just generate
     // all moves and select one of those.
@@ -241,7 +241,7 @@ boost::optional<Move> moves::maybe_make_fast_random_legal_move(State& state, boo
   if (!move)
     return boost::none;
   Undo undo = state.make_move(*move);
-  if (state.their_king_in_check()) {
+  if (state.their_king_attacked()) {
     state.unmake_move(undo);
     return boost::none;
   } else {

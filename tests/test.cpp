@@ -360,7 +360,7 @@ BOOST_AUTO_TEST_CASE(king_capture) {
 
   state.make_move(Move(c5, c4, move_types::normal)); // leaves king in check
 
-  BOOST_REQUIRE(state.their_king_in_check());
+  BOOST_REQUIRE(state.their_king_attacked());
 
   moves = moves::moves(state);
   BOOST_REQUIRE_MESSAGE(std::all_of(std::begin(moves), std::end(moves), [&](Move const& move) {

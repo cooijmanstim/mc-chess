@@ -216,36 +216,6 @@ std::ostream& operator<<(std::ostream& o, const State& s) {
   return o;
 }
 
-boost::optional<ColoredPiece> State::colored_piece_at(squares::Index square) const {
-  Bitboard bitboard = squares::bitboard(square);
-  for (Color color: colors::values)
-    for (Piece piece: pieces::values)
-      if (board[color][piece] & bitboard)
-        return ColoredPiece(color, piece);
-  return boost::none;
-}
-
-Piece State::piece_at(squares::Index square, Color color) const {
-  Bitboard bitboard = squares::bitboard(square);
-  for (Piece piece: pieces::values)
-    if (board[color][piece] & bitboard)
-      return piece;
-  std::cerr << "State::piece_at: no " << colors::name(color) << " piece at " << squares::keywords.at(square) << " in state: " << std::endl;
-  std::cerr << *this << std::endl;
-  print_backtrace();
-  throw std::runtime_error("no such piece");
-}
-
-bool State::their_king_in_check() const {
-  return targets::any_attacked(board[them][pieces::king], flat_occupancy, us, board[us]);
-}
-
-bool State::can_castle(Castle castle) const {
-  return castling_rights[us][castle]
-    && !(castles::safe_squares(us, castle) & their_attacks)
-    && !(castles::free_squares(us, castle) & flat_occupancy);
-}
-
 void State::update_castling_rights(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target) {
   undo.prior_castling_rights = castling_rights;
 
@@ -571,6 +541,40 @@ void State::compute_hash(Hash &hash) {
 
   if (en_passant_square)
     hash ^= hashes::en_passant(en_passant_square);
+}
+
+boost::optional<ColoredPiece> State::colored_piece_at(squares::Index square) const {
+  Bitboard bitboard = squares::bitboard(square);
+  for (Color color: colors::values)
+    for (Piece piece: pieces::values)
+      if (board[color][piece] & bitboard)
+        return ColoredPiece(color, piece);
+  return boost::none;
+}
+
+Piece State::piece_at(squares::Index square, Color color) const {
+  Bitboard bitboard = squares::bitboard(square);
+  for (Piece piece: pieces::values)
+    if (board[color][piece] & bitboard)
+      return piece;
+  std::cerr << "State::piece_at: no " << colors::name(color) << " piece at " << squares::keywords.at(square) << " in state: " << std::endl;
+  std::cerr << *this << std::endl;
+  print_backtrace();
+  throw std::runtime_error("no such piece");
+}
+
+bool State::can_castle(Castle castle) const {
+  return castling_rights[us][castle]
+    && !(castles::safe_squares(us, castle) & their_attacks)
+    && !(castles::free_squares(us, castle) & flat_occupancy);
+}
+
+bool State::in_check() const {
+  return their_attacks & board[us][pieces::king];
+}
+
+bool State::their_king_attacked() const {
+  return targets::any_attacked(board[them][pieces::king], flat_occupancy, us, board[us]);
 }
 
 bool State::our_king_captured() const {

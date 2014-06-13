@@ -47,11 +47,6 @@ public:
 
   friend std::ostream& operator<<(std::ostream& o, const State& s);
 
-  boost::optional<ColoredPiece> colored_piece_at(squares::Index square) const;
-  Piece piece_at(squares::Index square, Color color) const;
-  bool their_king_in_check() const;
-  bool can_castle(Castle castle) const;
-
   void update_castling_rights(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
   void update_en_passant_square(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
   void make_move_on_their_halfboard(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target);
@@ -69,6 +64,11 @@ public:
   void compute_their_attacks(Bitboard& their_attacks);
   void compute_hash(Hash &hash);
 
+  boost::optional<ColoredPiece> colored_piece_at(squares::Index square) const;
+  Piece piece_at(squares::Index square, Color color) const;
+  bool can_castle(Castle castle) const;
+  bool in_check() const;
+  bool their_king_attacked() const;
   bool our_king_captured() const;
   bool game_definitely_over() const;
   bool drawn_by_50() const;
