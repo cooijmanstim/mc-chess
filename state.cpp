@@ -591,10 +591,13 @@ bool State::drawn_by_50() const {
   return halfmove_clock >= 50;
 }
 
-// NOTE: assumes game is over and no moves have been made since the game was over
+// NOTE: assumes game is over (last call to moves() returned empty) and
+// no moves have been made since the game was over
 // (game is over as soon as it is drawn_by_50 or there are no more moves)
 boost::optional<Color> State::winner() const {
   if (drawn_by_50())
     return boost::none;
-  return them;
+  if (in_check())
+    return them;
+  return boost::none;
 }
