@@ -659,7 +659,11 @@ bool State::drawn_by_50() const {
 boost::optional<Color> State::winner() const {
   if (drawn_by_50())
     return boost::none;
-  if (in_check())
+  // TODO: still ambivalent about two possible views; one in which only legal
+  // moves are used (slower but more useful samples) and one in which the king
+  // may be left in check but must be captured if possible.  the below works
+  // for both.
+  if (in_check() || our_king_captured())
     return them;
   return boost::none;
 }
