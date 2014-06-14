@@ -32,6 +32,10 @@ namespace squares {
     return static_cast<Index>(bitboard::random_index(b, generator));
   }
 
+  inline Index flip_vertically(Index index) {
+    return static_cast<Index>(index ^ 56);
+  }
+
   template <typename F>
   inline void for_each(Bitboard b, F f) {
     bitboard::for_each_member(b, [&](size_t index) {
