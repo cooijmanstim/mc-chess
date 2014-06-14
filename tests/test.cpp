@@ -326,6 +326,19 @@ BOOST_AUTO_TEST_CASE(regression2) {
   state.make_move(notation::coordinate::parse("c5d6", state));
 }
 
+BOOST_AUTO_TEST_CASE(regression3) {
+  State state("rnbqkbnr/1ppppppp/p7/8/8/P2P4/1PP1PPPP/RNBQKBNR b KQkq - 0 0");
+  State previous_state;
+  for (std::string word: words("a6a5 c1g5 h7h5 g5c1 h5h4 b2b3 f7f5 c1d2 g8f6 c2c3 b7b5 g2g4 d7d6 a3a4 a8a7 a4b5 c8d7 g1f3 d7c6 b1a3 a7a6 g4g5 d6d5 a3c2 c6b7 d3d4 b8d7 e2e4 f6g4 h2h3 g4f2 c3c4 c7c6 c2b4 e7e6 b4d3 f8b4 a1a4 d5e4 b5a6 e4f3 d4d5 c6d5 a4a1 d7f8 a6b7 f2h1")) {
+    previous_state = state;
+    Move move = notation::coordinate::parse(word, state);
+    state.make_move(move);
+    state.require_consistent();
+    // the final move, f2h1, is a rook capture that should cost white the
+    // right to castle kingside.
+  }
+}
+
 BOOST_AUTO_TEST_CASE(king_capture) {
   using namespace squares;
 

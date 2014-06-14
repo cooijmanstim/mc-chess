@@ -307,6 +307,14 @@ void State::update_castling_rights(const Move& move, Undo& undo, const Piece pie
   default:
     throw std::runtime_error(str(boost::format("unhandled Piece case: %|1$#x|") % piece));
   }
+
+  if (move.is_capture() && (target & board[them][pieces::rook])) {
+    boost::optional<Castle> castle = castles::involving(move.target(), them);
+    if (castle && castling_rights[them][*castle]) {
+      castling_rights[them][*castle] = false;
+      hash ^= hashes::can_castle(them, *castle);
+    }
+  }
 }
 
 void State::update_en_passant_square(const Move& move, Undo& undo, const Piece piece, const Bitboard source, const Bitboard target) {
@@ -516,11 +524,11 @@ Undo State::make_move(const Move& move) {
   State prior_state(*this);
 #endif
 
+  update_castling_rights       (move, undo, piece, source, target);
   make_move_on_our_halfboard   (move, undo, piece, source, target);
   make_move_on_their_halfboard (move, undo, piece, source, target);
   make_move_on_occupancy       (move, undo, piece, source, target);
   update_en_passant_square     (move, undo, piece, source, target);
-  update_castling_rights       (move, undo, piece, source, target);
 
   std::swap(us, them);
   hash ^= hashes::black_to_move();
@@ -537,6 +545,10 @@ Undo State::make_move(const Move& move) {
 }
 
 void State::unmake_move(const Undo& undo) {
+#ifdef MC_EXPENSIVE_RUNTIME_TESTS
+  require_consistent(); // before unmake
+#endif
+
   std::swap(us, them);
 
   Piece piece = piece_at(undo.move.target(), us);
@@ -568,6 +580,10 @@ void State::unmake_move(const Undo& undo) {
   compute_hash();
   compute_occupancy();
   compute_their_attacks();
+
+#ifdef MC_EXPENSIVE_RUNTIME_TESTS
+  require_consistent(); // after unmake
+#endif
 }
 
 void State::compute_occupancy()     { compute_occupancy(occupancy, flat_occupancy); }
