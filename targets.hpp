@@ -168,38 +168,48 @@ namespace targets {
     return attacks | king_attacks(attackers[pieces::king]);
   }
 
-  inline bool any_attacked(Bitboard targets, Bitboard occupancy, Color attacker, Halfboard const& attackers) {
+  inline Bitboard attackers(Bitboard targets, Bitboard occupancy, Color attacker, Halfboard const& attackers, bool early_return = false) {
+    // put a superpiece on each target; if it attacks an attacker with the
+    // appropriate mobility, the attacker is attacking at least one of the
+    // targets.
+
     Color defender = colors::opposite(attacker);
 
-    // for each piece type, pretend there is a piece of that type owned by the
-    // defending player on the targets.  if this piece attacks an attacker of
-    // the same piece type, the at least one of the targets is attacked.
+    Bitboard sources = 0;
 
     for (const PawnAttackType &pa: pawn_attack_types) {
-      if (pawn_attacks(targets, pawn_dingbats[defender], pa) & attackers[pieces::pawn])
-        return true;
+      sources |= pawn_attacks(targets, pawn_dingbats[defender], pa) & attackers[pieces::pawn];
+      if (early_return && sources)
+        return sources;
     }
 
     for (const KnightAttackType &ka: knight_attack_types) {
-      if (ka.attacks(targets) & attackers[pieces::knight])
-        return true;
+      sources |= ka.attacks(targets) & attackers[pieces::knight];
+      if (early_return && sources)
+        return sources;
     }
 
-    if (squares::any(targets, [&](squares::Index source) {
-          Bitboard diagonal_attacks   = bishop_attacks(source, occupancy);
-          Bitboard orthogonal_attacks = rook_attacks(source, occupancy);
-          return
-            (diagonal_attacks   & (attackers[pieces::bishop] |
-                                   attackers[pieces::queen]))
-            |
-            (orthogonal_attacks & (attackers[pieces::rook] |
-                                   attackers[pieces::queen]));
-        }))
-      return true;
+    auto fn = [&](squares::Index source) {
+      Bitboard diagonal_attacks   = bishop_attacks(source, occupancy);
+      Bitboard orthogonal_attacks = rook_attacks(source, occupancy);
+      sources |= (diagonal_attacks   & (attackers[pieces::bishop] |
+                                        attackers[pieces::queen]));
+      sources |= (orthogonal_attacks & (attackers[pieces::rook] |
+                                        attackers[pieces::queen]));
+      return sources;
+    };
+    if (early_return) {
+      if (squares::any(targets, fn))
+        return true;
+    } else {
+      squares::for_each(targets, fn);
+    }
 
-    if (king_attacks(targets) & attackers[pieces::king])
-      return true;
+    sources |= king_attacks(targets) & attackers[pieces::king];
+    return sources;
+  }
 
-    return false;
+  inline bool any_attacked(Bitboard targets, Bitboard occupancy, Color attacker, Halfboard const& attackers) {
+    return targets::attackers(targets, occupancy, attacker, attackers, true);
   }
 }

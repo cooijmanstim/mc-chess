@@ -43,7 +43,6 @@ bool Move::is_castle() const {
 bool Move::is_capture() const {
   switch (type()) {
   case move_types::capture:
-  case move_types::king_capture:
   case move_types::capturing_promotion_knight:
   case move_types::capturing_promotion_bishop:
   case move_types::capturing_promotion_rook:
@@ -52,10 +51,6 @@ bool Move::is_capture() const {
   default:
     return false;
   }
-}
-
-bool Move::is_king_capture() const {
-  return type() == move_types::king_capture;
 }
 
 bool Move::is_promotion() const {

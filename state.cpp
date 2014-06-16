@@ -195,6 +195,10 @@ boost::optional<std::string> State::inconsistency() const {
   }
 
   for (Color color: colors::values) {
+    // king was captured? then anything goes
+    if (!board[color][pieces::king])
+      continue;
+
     for (Castle castle: castles::values) {
       if (castling_rights[color][castle]) {
         if (!(board[color][pieces::king] & squares::bitboard(castles::king_source(color, castle))))
@@ -331,7 +335,6 @@ void State::update_en_passant_square(const Move& move, Undo& undo, const Piece p
     hash ^= hashes::en_passant(en_passant_square);
     break;
   case move_types::capture:
-  case move_types::king_capture:
   case move_types::castle_kingside:
   case move_types::castle_queenside:
   case move_types::promotion_knight:
@@ -361,7 +364,6 @@ void State::make_move_on_their_halfboard(const Move& move, Undo& undo, const Pie
   case move_types::capturing_promotion_rook:
   case move_types::capturing_promotion_queen:
   case move_types::capture:
-  case move_types::king_capture:
     if (target == en_passant_square) {
       assert(piece == pieces::pawn);
       // the captured pawn is in front of the en_passant_square
@@ -462,7 +464,6 @@ void State::make_move_on_our_halfboard(const Move& move, Undo& undo, const Piece
     our_halfboard[queen] |=  target; toggle(hash, us, queen, move.target());
     break;
   case move_types::capture:
-  case move_types::king_capture:
   case move_types::double_push:
   case move_types::normal:
     break;
@@ -481,7 +482,6 @@ void State::make_move_on_occupancy(const Move& move, Undo& undo, const Piece pie
   case move_types::capturing_promotion_rook:
   case move_types::capturing_promotion_queen:
   case move_types::capture:
-  case move_types::king_capture:
     {
       Bitboard capture_target = target;
       if (target == en_passant_square) {

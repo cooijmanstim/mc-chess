@@ -4,6 +4,7 @@
 
 #include <boost/random.hpp>
 
+#include "util.hpp"
 #include "bitboard.hpp"
 #include "direction.hpp"
 
@@ -51,6 +52,37 @@ namespace squares {
         return true;
     }
     return false;
+  }
+
+  inline Bitboard in_between(Index a, Index b) {
+    // from https://chessprogramming.wikispaces.com/Square+Attacked+By#Obstructed
+    // haven't taken the time to understand
+    auto in_between_fn = [](Index sq1, Index sq2) {
+      const Bitboard m1   = Bitboard(-1);
+      const Bitboard a2a7 = Bitboard(0x0001010101010100);
+      const Bitboard b2g7 = Bitboard(0x0040201008040200);
+      const Bitboard h1b7 = Bitboard(0x0002040810204080); /* Thanks Dustin, g2b7 did not work for c1-a3 */
+      Bitboard btwn, line, rank, file;
+ 
+      btwn  = (m1 << sq1) ^ (m1 << sq2);
+      file  =   (sq2 & 7) - (sq1   & 7);
+      rank  =  ((sq2 | 7) -  sq1) >> 3 ;
+      line  =      (   (file  &  7) - 1) & a2a7; /* a2a7 if same file */
+      line += 2 * ((   (rank  &  7) - 1) >> 58); /* b1g1 if same rank */
+      line += (((rank - file) & 15) - 1) & b2g7; /* b2g7 if same diagonal */
+      line += (((rank + file) & 15) - 1) & h1b7; /* h1b7 if same antidiag */
+      line *= btwn & -btwn; /* mul acts like shift by smaller square */
+      return line & btwn;   /* return the bits on that line in-between */
+    };
+
+    static auto _in_between = [&]() {
+      array2d<Bitboard, cardinality, cardinality> result;
+      for (Index a: indices)
+        for (Index b: indices)
+          result[a][b] = in_between_fn(a, b);
+      return result;
+    }();
+    return _in_between[a][b];
   }
 }
 

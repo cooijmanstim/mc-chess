@@ -41,6 +41,16 @@ BOOST_AUTO_TEST_CASE(partitions) {
   BOOST_CHECK_BITBOARDS_EQUAL(diagonals::bitboards::a8h1, a8 | b7 | c6 | d5 | e4 | f3 | g2 | h1);
 }
 
+BOOST_AUTO_TEST_CASE(in_between) {
+  using namespace squares::bitboards;
+  BOOST_CHECK_BITBOARDS_EQUAL(squares::in_between(squares::a1, squares::g7), b2 | c3 | d4 | e5 | f6);
+  BOOST_CHECK_BITBOARDS_EQUAL(squares::in_between(squares::a1, squares::h7), 0);
+  BOOST_CHECK_BITBOARDS_EQUAL(squares::in_between(squares::c3, squares::f3), d3 | e3);
+  BOOST_CHECK_BITBOARDS_EQUAL(squares::in_between(squares::b6, squares::f2), c5 | d4 | e3);
+  BOOST_CHECK_BITBOARDS_EQUAL(squares::in_between(squares::b6, squares::f1), 0);
+  BOOST_CHECK_BITBOARDS_EQUAL(squares::in_between(squares::b6, squares::b3), b5 | b4);
+}
+
 BOOST_AUTO_TEST_CASE(initial_moves) {
   State state;
 
@@ -344,9 +354,10 @@ BOOST_AUTO_TEST_CASE(king_capture) {
 
   State state("8/5B2/8/Q1pk4/8/8/PPP5/6K1 b - - 0 0");
 
+  std::cout << state << std::endl;
+
   std::set<Move> expected_moves;
 #define MV(from, to, type) expected_moves.emplace(from, to, type);
-  MV(c5, c4, move_types::normal); // leaves king in check
   MV(d5, e5, move_types::normal);
   MV(d5, d6, move_types::normal);
   MV(d5, c6, move_types::normal);
@@ -368,13 +379,13 @@ BOOST_AUTO_TEST_CASE(king_capture) {
   BOOST_REQUIRE_MESSAGE(falsenegatives.empty(), "legal moves not generated: " << falsenegatives);
   BOOST_REQUIRE_MESSAGE(falsepositives.empty(), "illegal moves generated: " << falsepositives);
 
-  state.make_move(Move(c5, c4, move_types::normal)); // leaves king in check
+  state.make_move(Move(d5, c4, move_types::normal)); // leaves king in check
 
   BOOST_REQUIRE(state.their_king_attacked());
 
   moves = moves::moves(state);
   BOOST_REQUIRE_MESSAGE(std::all_of(std::begin(moves), std::end(moves), [&](Move const& move) {
-        return move.is_king_capture();
+        return squares::bitboard(move.target()) & state.board[state.them][pieces::king];
       }),
     "king capture not forced, state: " << state << " has non-king-capture move in " << moves);
 
