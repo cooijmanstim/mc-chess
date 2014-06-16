@@ -42,7 +42,7 @@ namespace castles {
     return free_squares[color][castle];
   }
 
-  inline squares::Index king_source(const Color color, const Castle castle) {
+  inline squares::Index king_source(Color color, Castle castle) {
     using namespace squares;
     using namespace colors;
     static auto king_sources = [](){
@@ -56,7 +56,7 @@ namespace castles {
     return king_sources[color][castle];
   }
 
-  inline squares::Index king_target(const Color color, const Castle castle) {
+  inline squares::Index king_target(Color color, Castle castle) {
     using namespace squares;
     using namespace colors;
     static auto king_targets = [](){
@@ -70,7 +70,7 @@ namespace castles {
     return king_targets[color][castle];
   }
 
-  inline Color color(const squares::Index king_source) {
+  inline Color color(squares::Index king_source) {
     using namespace colors;
     using namespace squares;
     switch (king_source) {
@@ -81,7 +81,7 @@ namespace castles {
     }
   }
 
-  inline squares::Index rook_target(const squares::Index king_target) {
+  inline squares::Index rook_target(squares::Index king_target) {
     using namespace squares;
     switch (king_target) {
     case g1: return f1;
@@ -93,7 +93,7 @@ namespace castles {
     }
   }
 
-  inline squares::Index rook_source(const squares::Index king_target) {
+  inline squares::Index rook_source(squares::Index king_target) {
     using namespace squares;
     switch (king_target) {
     case g1: return h1;
@@ -113,8 +113,7 @@ namespace castles {
     return rook_target(king_target(color, castle));
   }
 
-  // FIXME: primitive const&
-  inline boost::optional<Castle> involving(const squares::Index& rook_source, const Color color) {
+  inline boost::optional<Castle> involving(squares::Index rook_source, Color color) {
     using namespace squares;
     using namespace colors;
     switch (color) {
