@@ -6,8 +6,7 @@ MCTSAgent::MCTSAgent(unsigned nponderers)
     barrier_before_change(nponderers + 1),
     barrier_after_change(nponderers + 1),
     do_ponder(false),
-    do_terminate(false),
-    node(nullptr)
+    do_terminate(false)
 {
   for (unsigned i = 0; i < nponderers; i++) {
     auto seed = generator();
@@ -35,7 +34,6 @@ void MCTSAgent::perform_pondering(std::function<void()> pondering) {
   if (pending_change || !do_ponder) {
     barrier_before_change.wait();
     barrier_after_change.wait();
-    assert(node || !do_ponder);
   }
   if (do_ponder)
     pondering();
@@ -46,27 +44,13 @@ void MCTSAgent::set_state(State state) {
     return;
   between_ponderings([this, state]() {
       this->state = state;
-      if (this->node)
-        delete this->node;
-      this->node = new mcts::Node(nullptr, boost::none, state);
     });
 }
 
 void MCTSAgent::advance_state(Move move) {
   assert(this->state);
-  assert(this->node);
   between_ponderings([this, move]() {
       this->state->make_move(move);
-      mcts::Node* child = this->node->get_child(move);
-      if (child) {
-        this->node = child->destroy_parent_and_siblings();
-        assert(this->node);
-      } else {
-        // no simulations between set_state and advance_state, so nothing thrown
-        // away by just replacing the node.
-        delete this->node;
-        this->node = new mcts::Node(nullptr, move, *state);
-      }
     });
 }
 
@@ -86,7 +70,7 @@ void MCTSAgent::ponder(boost::mt19937 generator) {
   while (!do_terminate) {
     perform_pondering([this, &generator]() {
         for (int i = 0; i < 100; i++)
-          node->sample(*state, generator);
+          graph.sample(*state, generator);
       });
   }
 }
@@ -98,14 +82,17 @@ Move MCTSAgent::decide() {
 boost::future<Move> MCTSAgent::start_decision() {
   start_pondering();
   return boost::async([this]() {
-      boost::this_thread::sleep_for(boost::chrono::seconds(10));
+      boost::this_thread::sleep_for(boost::chrono::seconds(30));
       std::cout << "mcts result for state: " << std::endl;
       std::cout << *state << std::endl;
       std::cout << "candidate moves: " << std::endl;
-      node->print_statistics(std::cout);
+      graph.print_statistics(std::cout, *state);
       std::cout << "principal variation: " << std::endl;
-      node->print_principal_variation(std::cout);
-      return node->best_move();
+      graph.print_principal_variation(std::cout, *state);
+      boost::optional<Move> move = graph.principal_move(*state);
+      if (!move)
+        throw std::runtime_error("no moves in root state");
+      return *move;
     });
 }
 void MCTSAgent::finalize_decision() {

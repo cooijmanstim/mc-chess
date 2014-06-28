@@ -54,8 +54,6 @@ BOOST_AUTO_TEST_CASE(in_between) {
 BOOST_AUTO_TEST_CASE(initial_moves) {
   State state;
 
-  std::cout << state << std::endl;
-
   std::set<Move> expected_moves;
   using namespace directions;
   squares::for_each(ranks::bitboards::_2, [&expected_moves](squares::Index from) {
@@ -137,8 +135,6 @@ BOOST_AUTO_TEST_CASE(various_moves) {
     BOOST_CHECK(!state.castling_rights[black][queenside]);
     BOOST_CHECK_EQUAL(state.us, white);
   }
-
-  std::cout << state << std::endl;
 
   BOOST_CHECK_BITBOARDS_EQUAL(targets::rook_attacks(squares::c3, state.flat_occupancy),
                               0x00000000041b0404);
@@ -295,8 +291,6 @@ BOOST_AUTO_TEST_CASE(algebraic_moves) {
   MV(g1, h1, move_types::normal);
 #undef MV
 
-  std::cout << state << std::endl;
-
   std::vector<Move> moves = moves::moves(state);
   std::set<Move> actual_moves(moves.begin(), moves.end());
 
@@ -353,8 +347,6 @@ BOOST_AUTO_TEST_CASE(king_capture) {
   using namespace squares;
 
   State state("8/5B2/8/Q1pk4/8/8/PPP5/6K1 b - - 0 0");
-
-  std::cout << state << std::endl;
 
   std::set<Move> expected_moves;
 #define MV(from, to, type) expected_moves.emplace(from, to, type);
@@ -416,10 +408,10 @@ BOOST_AUTO_TEST_CASE(mcts_speedtest) {
   return;
   boost::mt19937 generator;
   State state;
-  mcts::Node tree(0, boost::none, state);
+  mcts::Graph graph;
   auto then = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < 1e5; i++) {
-    tree.sample(state, generator);
+    graph.sample(state, generator);
     if (i % 1024 == 0) {
       auto duration = std::chrono::high_resolution_clock::now() - then;
       std::cout << i << " " << duration.count() << std::endl;
@@ -438,7 +430,9 @@ BOOST_AUTO_TEST_CASE(mcts_agent) {
   decision.get();
 }
 
-
+// TODO: figure out what's going wrong with mate detection, like in the case below
+// TODO: in principal_move(), take the time to compute the probability that one is
+// better than the other.
 BOOST_AUTO_TEST_CASE(mcts_agent_certain_win) {
   // observed in testing; black has two moves, Kxh4 and g5.  after g5,
   // Qxg5 mates but is estimated to have ~2/3 winrate.  are there that
@@ -454,19 +448,36 @@ BOOST_AUTO_TEST_CASE(mcts_agent_certain_win) {
   decision.get();
 }
 
+// same as above, but lower-level
+BOOST_AUTO_TEST_CASE(mcts_agent_certain_win2) {
+  State state("rn4nr/p4N1p/6p1/1p1Q3k/1Pp4P/8/PP1PPP1P/RNB1KBR1 b Q - 0 0");
+  mcts::Graph graph;
+  boost::mt19937 generator;
+  state.make_move(notation::coordinate::parse("g6g5", state));
+  state.make_move(notation::coordinate::parse("d5g5", state));
+  std::cout << state << std::endl;
+  std::cout << state.dump_fen() << std::endl;
+  mcts::Node* node = graph.get_or_create_node(state);
+  for (int i = 0; i < 100; i++) {
+    State state2(state);
+    double result = node->rollout(state2, generator);
+    BOOST_CHECK_EQUAL(result, 0);
+  }
+}
+
 BOOST_AUTO_TEST_CASE(mcts_endgame_graphviz) {
   State state("r1bk3r/p2p1pNp/n2B1n2/1p1NP2P/6P1/3P4/P1P1K3/q5b1 w - - 0 23");
   boost::mt19937 generator;
-  mcts::Node tree(0, boost::none, state);
-  for (int i = 0; i < 1e4; i++)
-    tree.sample(state, generator);
+  mcts::Graph graph;
+  for (int i = 0; i < 1e5; i++)
+    graph.sample(state, generator);
   std::cout << "mcts results for state: " << std::endl;
   std::cout << state << std::endl;
   std::cout << "candidate moves: " << std::endl;
-  tree.print_statistics(std::cout);
+  graph.print_statistics(std::cout, state);
   std::cout << "principal variation: " << std::endl;
-  tree.print_principal_variation(std::cout);
+  graph.print_principal_variation(std::cout, state);
   //std::cout << "digraph G {" << std::endl;
-  //tree.graphviz(std::cout);
+  //graph.graphviz(std::cout, state);
   //std::cout << "}" << std::endl;
 }

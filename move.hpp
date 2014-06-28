@@ -38,9 +38,12 @@ public:
 
   bool operator==(const Move& that) const;
   bool operator!=(const Move& that) const;
-  bool operator< (const Move& that) const; // used for std::set in tests
 
   static Move castle(Color color, Castle castle);
 
   friend std::ostream& operator<<(std::ostream& o, const Move& m);
+
+  inline friend bool operator<(Move const& a, Move const& b) {
+    return a.move < b.move;
+  }
 };

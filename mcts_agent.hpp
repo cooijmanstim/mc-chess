@@ -15,7 +15,7 @@ class MCTSAgent : Agent, boost::noncopyable {
   bool do_ponder;
   bool do_terminate;
   boost::optional<State> state;
-  mcts::Node* node;
+  mcts::Graph graph;
 
   bool pending_change;
   boost::barrier barrier_before_change;
