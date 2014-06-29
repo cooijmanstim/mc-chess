@@ -31,7 +31,7 @@ namespace mcts {
 
     ac::accumulator_set<double, ac::stats<ac::tag::count, ac::tag::mean, ac::tag::variance> > statistics;
 
-    void initialize(State state);
+    void initialize(State const& state);
     double rollout(State& state, boost::mt19937& generator);
     void update(double result);
     static double selection_criterion(Node const* node);

@@ -2,10 +2,11 @@
 #include "notation.hpp"
 
 #include <queue>
+#include <bitset>
 
 using namespace mcts;
 
-void Node::initialize(State state) {
+void Node::initialize(State const& state) {
   hash = NodeTable::key(state.hash);
 }
 
@@ -147,7 +148,26 @@ Node* Graph::select_child(Node* node, State& state, boost::mt19937& generator) {
 void Graph::backprop(Node* node, double initial_result) {
   initial_result = invert_result(initial_result);
 
-  std::set<Hash> done;
+  // instead of using a std:set which uses a tree internally and thus is dog
+  // slow for our purposes, use the custom hash table approach again.  since
+  // the set of ancestors of any given node is relatively small, we can get
+  // away with a shorter key than we do for the node table without getting
+  // too many collisions.  in case a collision does happen, a node may
+  // mistakenly be considered to already have been processed.  in this case
+  // it will not be updated, and neither will its ancestors except for those
+  // reachable through other paths.
+  const static size_t key_cardinality = 1 << 16;
+  std::bitset<key_cardinality> encountered_nodes;
+  auto encountered = [&](Hash hash) {
+    hash &= key_cardinality - 1;
+    if (encountered_nodes.test(hash)) {
+      return true;
+    } else {
+      encountered_nodes.set(hash);
+      return false;
+    }
+  };
+
   std::queue<std::pair<Hash, double> > backlog;
   backlog.emplace(node->hash, initial_result);
   
@@ -170,12 +190,10 @@ void Graph::backprop(Node* node, double initial_result) {
 #endif
     node->update(pair.second);
 
-    done.insert(pair.first);
-    
     double parent_result = invert_result(pair.second);
     {
       node->do_parents([&](Hash parent_hash) {
-          if (done.count(parent_hash) == 0)
+          if (!encountered(parent_hash))
             backlog.emplace(parent_hash, parent_result);
         });
 
