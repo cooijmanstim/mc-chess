@@ -22,23 +22,6 @@ MCTSAgent::~MCTSAgent() {
   ponderers.join_all();
 }
 
-void MCTSAgent::between_ponderings(std::function<void()> change) {
-  pending_change = true;
-  barrier_before_change.wait();
-  change();
-  pending_change = false;
-  barrier_after_change.wait();
-}
-
-void MCTSAgent::perform_pondering(std::function<void()> pondering) {
-  if (pending_change || !do_ponder) {
-    barrier_before_change.wait();
-    barrier_after_change.wait();
-  }
-  if (do_ponder)
-    pondering();
-}
-
 void MCTSAgent::set_state(State state) {
   if (state == this->state)
     return;
@@ -69,8 +52,7 @@ void MCTSAgent::stop_pondering() {
 void MCTSAgent::ponder(boost::mt19937 generator) {
   while (!do_terminate) {
     perform_pondering([this, &generator]() {
-        for (int i = 0; i < 100; i++)
-          graph.sample(*state, generator);
+        graph.sample(*state, generator);
       });
   }
 }

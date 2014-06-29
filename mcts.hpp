@@ -13,6 +13,15 @@
 namespace mcts {
   namespace ac = boost::accumulators;
 
+  const double
+    loss_value = 0,
+    draw_value = 0.5,
+    win_value = 1;
+
+  static inline double invert_result(double result) {
+    return 1 - result;
+  }
+
   class Node : boost::noncopyable {
   public:
     std::set<Hash> parents;
@@ -22,32 +31,14 @@ namespace mcts {
 
     ac::accumulator_set<double, ac::stats<ac::tag::count, ac::tag::mean, ac::tag::variance> > statistics;
 
-    inline void initialize(State state) {
-      hash = state.hash;
-    }
-
+    void initialize(State state);
     double rollout(State& state, boost::mt19937& generator);
+    void update(double result);
+    static double selection_criterion(Node const* node);
 
-    static inline double invert_result(double result) {
-      return 1 - result;
-    }
-
-    inline void update(double result) {
-      statistics(result);
-    }
-
-    static inline size_t sample_size (Node const* node) { return ac::count(node->statistics); }
-    static inline double mean (Node const* node) { return ac::mean(node->statistics); }
-    static inline double variance (Node const* node) { return ac::variance(node->statistics); }
-    static inline double selection_criterion (Node const* node) {
-      // a la Iolis & Bontempi, "Comparison of Selection Strategies in
-      // Monte-Carlo Tree Search for Computer Poker".  I don't distinguish
-      // between internal nodes and leaf nodes because finding the children
-      // of a node involves move generation and node lookups.
-      if (sample_size(node) < 30)
-        return 1e6;
-      return mean(node) + sqrt(variance(node)) / log(sample_size(node));
-    }
+    static inline size_t sample_size(Node const* node) { return ac::count(node->statistics); }
+    static inline double mean(Node const* node) { return ac::mean(node->statistics); }
+    static inline double variance(Node const* node) { return ac::variance(node->statistics); }
 
     template <typename F>
     inline void do_successors(State state, F f) {
@@ -71,15 +62,29 @@ namespace mcts {
     std::string format_statistics();
   };
 
-  class Graph {
-    // TODO: having to lock on nodes all the time is really going to be a
-    // performance drain.  use a custom hash table after all.
-    std::map<Hash, Node> nodes;
-    std::mutex nodes_mutex;
+  class NodeTable {
+    static const size_t HASH_KEY_LENGTH = 16;
+    static const size_t HASH_KEY_CARDINALITY = 1 << HASH_KEY_LENGTH;
+    static const size_t HASH_KEY_MASK = HASH_KEY_CARDINALITY - 1;
+    std::array<Node, HASH_KEY_CARDINALITY> nodes;
 
   public:
-    Node* get_node(Hash hash);
-    Node* get_or_create_node(State const& state);
+    static inline size_t key(const State& state) {
+      return key(state.hash);
+    }
+
+    static inline size_t key(Hash hash) {
+      return hash & HASH_KEY_MASK;
+    }
+
+    Node* get(Hash hash);
+    Node* get_or_create(State const& state);
+  };
+
+  class Graph {
+    NodeTable nodes;
+
+  public:
     void sample(State state, boost::mt19937& generator);
     Node* select_child(Node* node, State& state, boost::mt19937& generator);
     void backprop(Node* node, double initial_result);
