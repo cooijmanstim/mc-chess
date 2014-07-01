@@ -432,25 +432,27 @@ BOOST_AUTO_TEST_CASE(mcts_agent_certain_win) {
 }
 
 BOOST_AUTO_TEST_CASE(mcts_speedtest) {
+  std::cout << "cumulative sampling durations for initial state:" << std::endl;
   boost::mt19937 generator;
   State state;
   mcts::Graph graph;
-  for (int i = 0; i < 1e4; i++) {
+  auto then = std::chrono::high_resolution_clock::now();
+  for (int i = 1; i <= 1e4; i++) {
     graph.sample(state, generator);
-    if (i % 1024 == 0) {
+    if (i % 1000 == 0) {
+      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - then);
+      std::cout << i << " " << duration.count() << std::endl;
     }
   }
 }
 
 BOOST_AUTO_TEST_CASE(mcts_endgame_graphviz) {
+  return;
   State state("r1bk3r/p2p1pNp/n2B1n2/1p1NP2P/6P1/3P4/P1P1K3/q5b1 w - - 0 23");
   boost::mt19937 generator;
   mcts::Graph graph;
-  auto then = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < 1e4; i++)
     graph.sample(state, generator);
-  auto duration = std::chrono::high_resolution_clock::now() - then;
-  std::cout << "1e4 samples in " << duration.count() << " seconds" << std::endl;
   std::cout << "mcts results for state: " << std::endl;
   std::cout << state << std::endl;
   std::cout << "candidate moves: " << std::endl;
