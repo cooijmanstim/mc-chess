@@ -20,12 +20,12 @@ double Node::selection_criterion(Node const* node) {
   return mean(node) + 0.5 * sqrt(variance(node)) / log(sample_size(node));
 }
 
-void Node::adjoin_parent(Hash parent_hash) {
+void Node::adjoin_parent(Node* parent) {
   std::lock_guard<std::mutex> lock(parents_mutex);
   // TODO: would be better to search from end to beginning, more likely to
   // be at the end
-  if (std::find(parents.begin(), parents.end(), parent_hash) == parents.end())
-    parents.push_back(parent_hash);
+  if (std::find(parents.begin(), parents.end(), parent) == parents.end())
+    parents.push_back(parent);
 }
 
 double Node::rollout(State& state, boost::mt19937& generator) {
@@ -105,9 +105,6 @@ Node* Graph::select_child(Node* node, State& state, boost::mt19937& generator) {
   std::vector<Move> moves;
   moves::moves(moves, state);
 
-  Hash parent_hash = state.hash;
-  assert(NodeTable::key(parent_hash) == node->hash);
-
   // find a legal move with maximum selection criterion.
   boost::optional<Move> best_move;
   Node* best_child;
@@ -117,7 +114,7 @@ Node* Graph::select_child(Node* node, State& state, boost::mt19937& generator) {
     Node* curr_child = nodes.get_or_create(state);
 
     bool new_node = curr_child->parents.empty();
-    curr_child->adjoin_parent(parent_hash);
+    curr_child->adjoin_parent(node);
     if (new_node)
       // select new nodes unconditionally
       return curr_child;
@@ -154,46 +151,45 @@ void Graph::backprop(Node* node, double initial_result) {
   initial_result = invert_result(initial_result);
 
   std::unordered_set<Hash> encountered_nodes;
-  auto encountered = [&](Hash hash) {
-    if (encountered_nodes.count(hash) > 0) {
+  auto encountered = [&](Node* node) {
+    if (encountered_nodes.count(node->hash) > 0) {
       return true;
     } else {
-      encountered_nodes.insert(hash);
+      encountered_nodes.insert(node->hash);
       return false;
     }
   };
 
-  std::queue<std::pair<Hash, double> > backlog;
-  backlog.emplace(node->hash, initial_result);
+  std::queue<std::pair<Node*, double> > backlog;
+  backlog.emplace(node, initial_result);
   
 #ifdef MC_EXPENSIVE_RUNTIME_TESTS
   State known_win_state("rn4nr/p4N1p/8/1p4Qk/1Pp4P/8/PP1PPP1P/RNB1KBR1 b Q - 0 0");
 #endif
 
   while (!backlog.empty()) {
-    std::pair<Hash, double> pair = backlog.front();
+    std::pair<Node*, double> pair = backlog.front();
     backlog.pop();
     
-    Node* node = nodes.get(pair.first);
+    Node* node = pair.first;
+    double result = pair.second;
 
 #ifdef MC_EXPENSIVE_RUNTIME_TESTS
-    if (pair.first == NodeTable::key(known_win_state.hash)) {
+    //if (node->hash == NodeTable::key(known_win_state.hash)) {
       // assertion commented out because hash collisions can cause it to fail.
       // uncomment it to get a backtrace when the relevant test case fails.
-//      assert(pair.second == win_value);
-    }
+//      assert(result == win_value);
+    //}
 #endif
-    node->update(pair.second);
+    node->update(result);
 
-    double parent_result = invert_result(pair.second);
-    {
-      node->do_parents([&](Hash parent_hash) {
-          if (!encountered(parent_hash))
-            backlog.emplace(parent_hash, parent_result);
-        });
+    double parent_result = invert_result(result);
+    node->do_parents([&](Node* parent) {
+        if (!encountered(parent))
+          backlog.emplace(parent, parent_result);
+      });
 
-      assert(backlog.size() < 1e4);
-    }
+    assert(backlog.size() < 1e4);
   }
 }
 
@@ -268,4 +264,3 @@ void Graph::graphviz(std::ostream& os, Node* node, State state, boost::optional<
       os << hash_as_id(node->hash) << " -> " << hash_as_id(child->hash) << ";" << std::endl;
     });
 }
-
