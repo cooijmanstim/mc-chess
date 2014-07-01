@@ -20,6 +20,14 @@ double Node::selection_criterion(Node const* node) {
   return mean(node) + 0.5 * sqrt(variance(node)) / log(sample_size(node));
 }
 
+void Node::adjoin_parent(Hash parent_hash) {
+  std::lock_guard<std::mutex> lock(parents_mutex);
+  // TODO: would be better to search from end to beginning, more likely to
+  // be at the end
+  if (std::find(parents.begin(), parents.end(), parent_hash) == parents.end())
+    parents.push_back(parent_hash);
+}
+
 double Node::rollout(State& state, boost::mt19937& generator) {
   Color initial_player = state.us;
 #ifdef MC_EXPENSIVE_RUNTIME_TESTS
@@ -46,7 +54,7 @@ double Node::rollout(State& state, boost::mt19937& generator) {
 }
 
 std::string Node::format_statistics() {
-  return str(boost::format("%1% %2% %3% %4%") % sample_size(this) % mean(this) % variance(this) % selection_criterion(this));
+  return str(boost::format("%1% %2% %3% %4% (%5% parents)") % sample_size(this) % mean(this) % variance(this) % selection_criterion(this) % parents.size());
 }
 
 Node* NodeTable::get(Hash hash) {
@@ -67,7 +75,7 @@ Node* NodeTable::get_or_create(State const& state) {
 
 void Graph::sample(State state, boost::mt19937& generator) {
   Node* node = nodes.get_or_create(state);
-  std::set<Hash> path;
+  std::unordered_set<Hash> path;
 
   // selection
   while (Node::sample_size(node) > 0) {
@@ -108,14 +116,11 @@ Node* Graph::select_child(Node* node, State& state, boost::mt19937& generator) {
     Undo undo = state.make_move(curr_move);
     Node* curr_child = nodes.get_or_create(state);
 
-    {
-      std::lock_guard<std::mutex> lock(curr_child->parents_mutex);
-      // new node; select it unconditionally
-      bool new_node = curr_child->parents.empty();
-      curr_child->parents.insert(parent_hash);
-      if (new_node)
-        return curr_child;
-    }
+    bool new_node = curr_child->parents.empty();
+    curr_child->adjoin_parent(parent_hash);
+    if (new_node)
+      // select new nodes unconditionally
+      return curr_child;
 
     // if legal
     if (!state.their_king_attacked()) {
@@ -148,22 +153,12 @@ Node* Graph::select_child(Node* node, State& state, boost::mt19937& generator) {
 void Graph::backprop(Node* node, double initial_result) {
   initial_result = invert_result(initial_result);
 
-  // instead of using a std:set which uses a tree internally and thus is dog
-  // slow for our purposes, use the custom hash table approach again.  since
-  // the set of ancestors of any given node is relatively small, we can get
-  // away with a shorter key than we do for the node table without getting
-  // too many collisions.  in case a collision does happen, a node may
-  // mistakenly be considered to already have been processed.  in this case
-  // it will not be updated, and neither will its ancestors except for those
-  // reachable through other paths.
-  const static size_t key_cardinality = 1 << 16;
-  std::bitset<key_cardinality> encountered_nodes;
+  std::unordered_set<Hash> encountered_nodes;
   auto encountered = [&](Hash hash) {
-    hash &= key_cardinality - 1;
-    if (encountered_nodes.test(hash)) {
+    if (encountered_nodes.count(hash) > 0) {
       return true;
     } else {
-      encountered_nodes.set(hash);
+      encountered_nodes.insert(hash);
       return false;
     }
   };

@@ -24,7 +24,10 @@ namespace mcts {
 
   class Node : boost::noncopyable {
   public:
-    std::set<Hash> parents;
+    // TODO: just store the pointers to the parent nodes; then we need fewer
+    // lookups in the node table, and we may even be able to get away with
+    // using a std::map for that again.
+    std::vector<Hash> parents;
     std::mutex parents_mutex;
 
     Hash hash;
@@ -32,6 +35,7 @@ namespace mcts {
     ac::accumulator_set<double, ac::stats<ac::tag::count, ac::tag::mean, ac::tag::variance> > statistics;
 
     void initialize(State const& state);
+    void adjoin_parent(Hash parent_hash);
     double rollout(State& state, boost::mt19937& generator);
     void update(double result);
     static double selection_criterion(Node const* node);
