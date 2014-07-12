@@ -15,7 +15,7 @@ class MCTSAgent : Agent, boost::noncopyable {
   bool do_ponder;
   bool do_terminate;
   boost::optional<State> state;
-  mcts::Node* node;
+  mcts::Graph graph;
 
   bool pending_change;
   boost::barrier barrier_before_change;
@@ -26,8 +26,24 @@ public:
   ~MCTSAgent();
 
   // to safely communicate with ponderers
-  void between_ponderings(std::function<void()> change);
-  void perform_pondering(std::function<void()> pondering);
+  template <typename F>
+  void between_ponderings(F change) {
+    pending_change = true;
+    barrier_before_change.wait();
+    change();
+    pending_change = false;
+    barrier_after_change.wait();
+  }
+
+  template <typename F>
+  void perform_pondering(F pondering) {
+    if (pending_change || !do_ponder) {
+      barrier_before_change.wait();
+      barrier_after_change.wait();
+    }
+    if (do_ponder)
+      pondering();
+  }
 
   void set_state(State state);
   void advance_state(Move move);

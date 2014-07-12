@@ -34,6 +34,7 @@
     return _by_keyword.at(keyword);
   }
 
+  __attribute__((always_inline))
   inline Bitboard bitboard(Index i) {
     static auto bitboards = [](){
       std::array<Bitboard, cardinality> bitboards;

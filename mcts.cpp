@@ -1,135 +1,31 @@
 #include "mcts.hpp"
 #include "notation.hpp"
 
+#include <queue>
+#include <bitset>
+
 using namespace mcts;
 
-Node::Node(Node* parent, boost::optional<Move> move, const State& state)
-  : parent(parent),
-    children(nullptr),
-    child_count(0),
-    state_hash(state.hash),
-    last_move(move),
-    total_result(0),
-    visit_count(0)
-{
+void Node::initialize(State const& state) {
+  hash = NodeTable::key(state.hash);
 }
 
-Node::~Node() {
-  if (children && child_count > 0) {
-    // this is thread-safe because children and child_count are constant
-    // after the node is expanded.
-    // NOTE: not entirely true anymore, but still thread-safe.  MCTSAgent
-    // uses a persistent tree and occasionally destroys parts of it, but
-    // always makes sure that nobody else is working on the tree at the
-    // same time.
-    Node* end = children + child_count;
-    for (Node *child = children; child < end; child++)
-      child->~Node();
-    ::operator delete(children);
-  }
+void Node::update(double result) {
+  statistics(result);
 }
 
-Node::Node(Node&& that) {
-  // the move idiom doesn't really fit what we're trying to do here.  in
-  // destroy_parent_and_siblings(), we want to destroy the node's siblings
-  // and free their memory, but the parent's children are all stored in one
-  // contiguous block of memory, so we can't free selectively.  instead, we
-  // reallocate memory for this node elsewhere and move its resources there.
-  // the part that doesn't fit the move idiom is that the parent is still
-  // pointing to the old memory location for its children even though one
-  // of its children has moved.  this is the behavior we need, because then
-  // we can destroy the parent and have it take the siblings down with it.
-  // all we need to do is ensure that.children no longer refers to the list
-  // of this node's children (because we want to keep it and not have it
-  // destroyed).
-  // tl;dr: behavior of the move constructor is tailored to
-  // destroy_parent_and_siblings() and may not fit other uses.
-  this->parent = nullptr;
-  this->children = that.children;
-  this->child_count = that.child_count;
-  this->state_hash = that.state_hash;
-  this->last_move = that.last_move;
-  this->total_result = that.total_result;
-  this->visit_count = that.visit_count;
-
-  that.child_count = 0;
-  that.children = nullptr;
-  do_children([this](Node* child) {
-      child->parent = this;
-    });
+double Node::selection_criterion(Node const* node) {
+  if (sample_size(node) < 30)
+    return 1e6;
+  return mean(node) + 0.5 * sqrt(variance(node)) / log(sample_size(node));
 }
 
-const double
-  loss_value = 0,
-  draw_value = 0.5,
-  win_value = 1;
-
-Result Node::invert_result(Result result) {
-  return 1 - result;
+void Node::adjoin_parent(Node* parent) {
+  std::lock_guard<std::mutex> lock(parents_mutex);
+  parents.insert(parent);
 }
 
-Node* Node::get_child(Move move) {
-  if (children && child_count > 0) {
-    Node* end = children + child_count;
-    for (Node *child = children; child < end; child++)
-      if (child->last_move == move)
-        return child;
-  }
-  return nullptr;
-}
-
-Node* Node::destroy_parent_and_siblings() {
-  Node* that = new Node(std::move(*this));
-  assert(parent);
-  delete parent;
-  return that;
-}
-
-void Node::sample(State state, boost::mt19937& generator) {
-  assert(state.hash == this->state_hash);
-  Node* node = this;
-  node = node->select(state);
-  node = node->expand(state, generator);
-  double result = node->rollout(state, generator);
-  node->backprop(result);
-}
-
-Node* Node::select(State& state) {
-  Node* node = this;
-  while (node->children && node->child_count > 0) {
-    node = node->select_by(uct_score);
-    assert(node);
-    state.make_move(*node->last_move);
-  }
-  return node;
-}
-
-Node* Node::expand(State& state, boost::mt19937& generator) {
-  // TODO: computation of legal_moves() involves making the moves and then
-  // unmaking them again.  in the loop below we do the same.  maybe combine.
-  std::vector<Move> moves;
-  moves::legal_moves(moves, state);
-
-  Node* children = static_cast<Node*>(::operator new(moves.size() * sizeof(Node)));
-  for (size_t i = 0; i < moves.size(); i++) {
-    // to avoid having to keep track of unexplored_moves, and to ensure the
-    // children sequence is constant-size, construct all children right away.
-    Undo undo = state.make_move(moves[i]);
-    new(&children[i]) Node(this, moves[i], state);
-    state.unmake_move(undo);
-  }
-  this->child_count = moves.size();
-  this->children = children;
-#ifdef MC_EXPENSIVE_RUNTIME_TESTS
-  do_children([](Node* child) {
-      assert(child->last_move);
-    });
-#endif
-  // select one of the children
-  return select(state);
-}
-
-Result Node::rollout(State& state, boost::mt19937& generator) {
+double Node::rollout(State& state, boost::mt19937& generator) {
   Color initial_player = state.us;
 #ifdef MC_EXPENSIVE_RUNTIME_TESTS
   State initial_state(state);
@@ -151,105 +47,217 @@ Result Node::rollout(State& state, boost::mt19937& generator) {
   boost::optional<Color> winner = state.winner();
   if (!winner)
     return draw_value;
-  return *winner == initial_player ? loss_value : win_value;
+  return *winner == initial_player ? win_value : loss_value;
 }
 
-void Node::backprop(Result result) {
-  Node* node = this;
-  do {
-    node->update(result);
-    result = invert_result(result);
-    node = node->parent;
-  } while (node);
+std::string Node::format_statistics() {
+  return str(boost::format("%1% %2% %3% %4% (%5% parents)") % sample_size(this) % mean(this) % variance(this) % selection_criterion(this) % parents.size());
 }
 
-void Node::update(Result result) {
-  total_result += result;
-  visit_count++;
+Node* NodeTable::get(Hash hash) {
+  size_t key = NodeTable::key(hash);
+  Node* node = &nodes.at(key);
+  if (node->hash != key)
+    return nullptr;
+  return node;
 }
 
-double Node::winrate(Node* child) {
-  if (child->visit_count == 0)
-    return 0.5;
-  return child->total_result / child->visit_count;
+Node* NodeTable::get_or_create(State const& state) {
+  size_t key = NodeTable::key(state);
+  Node* node = &nodes.at(key);
+  if (node->hash != key)
+    node->initialize(state);
+  return node;
 }
 
-double Node::uct_score(Node* child) {
-  if (child->visit_count == 0)
-    return 1e6;
-  assert(child->parent);
-  return winrate(child) + sqrt(2 * log(child->parent->visit_count) / child->visit_count);
+void Graph::sample(State state, boost::mt19937& generator) {
+  Node* node = nodes.get_or_create(state);
+  std::unordered_set<Hash> path;
+
+  // selection
+  while (Node::sample_size(node) > 0) {
+    path.insert(node->hash);
+
+    Node* child = select_child(node, state, generator);
+    if (!child) {
+      // no legal successors; loss
+      backprop(node, loss_value);
+      return;
+    }
+    if (path.count(child->hash) > 0) {
+      // repeated state selected; draw by repetition
+      backprop(node, draw_value);
+      return;
+    }
+    node = child;
+  }
+
+  double result = node->rollout(state, generator);
+  backprop(node, result);
 }
 
-double Node::most_visited(Node* child) {
-  return child->visit_count;
-}
+// returns nullptr if no legal successor states
+// NOTE: state will be modified to be the corresponding successor
+Node* Graph::select_child(Node* node, State& state, boost::mt19937& generator) {
+  std::vector<Move> moves;
+  moves::moves(moves, state);
 
-Node* Node::select_by(std::function<double(Node*)> key) {
-  double best_value;
-  Node* best_child = nullptr;
-  if (children && child_count > 0) {
-    Node* end = children + child_count;
-    for (Node* curr_child = children; curr_child < end; curr_child++) {
-      double curr_value = key(curr_child);
-      if (!best_child || best_value < curr_value) {
-        best_value = curr_value;
+  // find a legal move with maximum selection criterion.
+  boost::optional<Move> best_move;
+  Node* best_child;
+  double best_score;
+  for (Move curr_move: moves) {
+    Undo undo = state.make_move(curr_move);
+    Node* curr_child = nodes.get_or_create(state);
+
+    bool new_node = curr_child->parents.empty();
+    curr_child->adjoin_parent(node);
+    if (new_node)
+      // select new nodes unconditionally
+      return curr_child;
+
+    // if legal
+    if (!state.their_king_attacked()) {
+      double curr_score = Node::selection_criterion(curr_child);
+      if (!best_move || curr_score > best_score) {
+        best_move  = curr_move;
         best_child = curr_child;
+        best_score = curr_score;
       }
     }
+    
+    state.unmake_move(undo);
   }
+
+  if (!best_move)
+    return nullptr;
+  
+  state.make_move(*best_move);
   return best_child;
 }
 
-Move Node::best_move() {
-  Node* best_child = select_by(most_visited);
-  assert(best_child);
-  assert(best_child->last_move);
-  return *best_child->last_move;
-}
+// update the node and all of its ancestors.  the graph is likely to be
+// cyclic due to reversible moves.  we traverse it in a breadth-first
+// manner so that the updates run along the shortest paths to each
+// unique ancestor.
+// NOTE: initial_result is from the perspective of the player who is to move in
+// the state corresponding to node.  since the stored node values are from the
+// perspective of the player who causes the node to be chosen, we have to invert
+// it once.
+void Graph::backprop(Node* node, double initial_result) {
+  initial_result = invert_result(initial_result);
 
-void Node::do_children(std::function<void(Node*)> f) {
-  if (!children)
-    return;
-  Node* end = children + child_count;
-  for (Node* curr_child = children; curr_child < end; curr_child++) {
-    f(curr_child);
+  std::unordered_set<Hash> encountered_nodes;
+  auto encountered = [&](Node* node) {
+    if (encountered_nodes.count(node->hash) > 0) {
+      return true;
+    } else {
+      encountered_nodes.insert(node->hash);
+      return false;
+    }
+  };
+
+  std::queue<std::pair<Node*, double> > backlog;
+  backlog.emplace(node, initial_result);
+  
+#ifdef MC_EXPENSIVE_RUNTIME_TESTS
+  State known_win_state("rn4nr/p4N1p/8/1p4Qk/1Pp4P/8/PP1PPP1P/RNB1KBR1 b Q - 0 0");
+#endif
+
+  while (!backlog.empty()) {
+    std::pair<Node*, double> pair = backlog.front();
+    backlog.pop();
+    
+    Node* node = pair.first;
+    double result = pair.second;
+
+#ifdef MC_EXPENSIVE_RUNTIME_TESTS
+    //if (node->hash == NodeTable::key(known_win_state.hash)) {
+      // assertion commented out because hash collisions can cause it to fail.
+      // uncomment it to get a backtrace when the relevant test case fails.
+//      assert(result == win_value);
+    //}
+#endif
+    node->update(result);
+
+    double parent_result = invert_result(result);
+    node->do_parents([&](Node* parent) {
+        if (!encountered(parent))
+          backlog.emplace(parent, parent_result);
+      });
+
+    assert(backlog.size() < 1e4);
   }
 }
 
-void Node::print_statistics(std::ostream& os) {
-  do_children([&](Node* child) {
-    os << *child->last_move << " " << child->visit_count << " " << winrate(child) << " " << uct_score(child) << std::endl;
-  });
-  os << visit_count << " " << winrate(this) << std::endl;
+template <typename F>
+boost::optional<Move> Graph::select_successor_by(State state, F f) {
+  Node* node = nodes.get_or_create(state);
+  boost::optional<Move> best_move;
+  double best_score;
+  node->do_successors(state, [&](State const& state, Move curr_move) {
+      Node* curr_node = nodes.get_or_create(state);
+      double curr_score = f(curr_node);
+      if (!best_move || best_score < curr_score) {
+        best_move  = curr_move;
+        best_score = curr_score;
+      }
+    });
+  return best_move;
 }
 
-void Node::print_principal_variation(std::ostream& os) {
-  Node* child = select_by(most_visited);
-  if (!child)
+void Graph::print_statistics(std::ostream& os, State state) {
+  Node* node = nodes.get_or_create(state);
+  os << node->format_statistics() << std::endl;
+  node->do_successors(state, [&](State const& state, Move last_move) {
+      Node* node = nodes.get_or_create(state);
+      os << last_move << " " << node->format_statistics() << std::endl;
+    });
+}
+
+boost::optional<Move> Graph::principal_move(State state) {
+  // NOTE: we don't simply select the move with the best score. we also
+  // want the subtree to be well explored.  the most-explored node should
+  // have both of these properties.
+  return select_successor_by(state, Node::sample_size);
+}
+
+void Graph::print_principal_variation(std::ostream& os, State state) {
+  std::set<Hash> path;
+  print_principal_variation(os, state, path);
+}
+
+void Graph::print_principal_variation(std::ostream& os, State state, std::set<Hash>& path) {
+  boost::optional<Move> move = principal_move(state);
+  if (!move)
     return;
-  os << *child->last_move << " " << child->visit_count << " " << winrate(child) << std::endl;
-  child->print_principal_variation(os);
+  state.make_move(*move);
+  Node* child = nodes.get_or_create(state);
+  if (Node::sample_size(child) == 0 || path.count(child->hash) > 0)
+    return;
+  path.insert(child->hash);
+  os << *move << " " << child->format_statistics() << std::endl;
+  print_principal_variation(os, state, path);
 }
 
-void Node::graphviz(std::ostream& os) {
+// FIXME: handle cycles
+void Graph::graphviz(std::ostream& os, Node* node, State state, boost::optional<Move> last_move = boost::none) {
   auto hash_as_id = [this](Hash hash) {
     return str(boost::format("\"%1$#8x\"") % hash);
   };
-  os << hash_as_id(state_hash)
+  os << hash_as_id(state.hash)
      << "[label=\"{"
      << (last_move ? notation::coordinate::format(*last_move) : "-")
      << " | "
-     << winrate(this) << " (" << total_result << "/" << visit_count << ") "
-     << " | "
-     << (parent ? str(boost::format("%f") % uct_score(this)) : "-")
+     << node->format_statistics()
      << "}\"];"
      << std::endl;
-  do_children([&](Node* child) {
-      // to keep the graph small
-      if (child->visit_count == 0)
+  node->do_successors(state, [&](State state, Move last_move) {
+      // only include existing nodes (to keep the graph small)
+      Node* child = nodes.get(state.hash);
+      if (!child)
         return;
-      child->graphviz(os);
-      os << hash_as_id(state_hash) << " -> " << hash_as_id(child->state_hash) << ";" << std::endl;
+      graphviz(os, node, state, last_move);
+      os << hash_as_id(node->hash) << " -> " << hash_as_id(child->hash) << ";" << std::endl;
     });
 }

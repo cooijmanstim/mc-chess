@@ -72,7 +72,6 @@ boost::optional<Piece> Move::promotion() const {
 
 bool Move::operator==(const Move& that) const { return this->move == that.move; }
 bool Move::operator!=(const Move& that) const { return this->move != that.move; }
-bool Move::operator< (const Move& that) const { return this->move <  that.move; }
 
 Move Move::castle(Color color, Castle castle) {
   static auto castle_moves = []() {
