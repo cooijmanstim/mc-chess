@@ -586,10 +586,6 @@ void State::unmake_move(const Undo& undo) {
 #endif
 }
 
-void State::compute_occupancy()     { compute_occupancy(occupancy, flat_occupancy); }
-void State::compute_their_attacks() { compute_their_attacks(their_attacks); }
-void State::compute_hash()          { compute_hash(hash); }
-
 void State::compute_occupancy(Occupancy& occupancy, Bitboard& flat_occupancy) const {
   board::flatten(board, occupancy);
   board::flatten(occupancy, flat_occupancy);
@@ -639,34 +635,6 @@ Piece State::piece_at(squares::Index square, Color color) const {
   std::cerr << *this << std::endl;
   print_backtrace();
   throw std::runtime_error("no such piece");
-}
-
-bool State::can_castle(Castle castle) const {
-  return castling_rights[us][castle]
-    && !(castles::safe_squares(us, castle) & their_attacks)
-    && !(castles::free_squares(us, castle) & flat_occupancy);
-}
-
-bool State::in_check() const {
-  return their_attacks & board[us][pieces::king];
-}
-
-bool State::their_king_attacked() const {
-  return targets::any_attacked(board[them][pieces::king], flat_occupancy, us, board[us]);
-}
-
-bool State::our_king_captured() const {
-  return bitboard::is_empty(board[us][pieces::king]);
-}
-
-// may return false on games that are over (too expensive to generate moves),
-// but will not return true on games that are not over
-bool State::game_definitely_over() const {
-  return drawn_by_50() || our_king_captured();
-}
-
-bool State::drawn_by_50() const {
-  return halfmove_clock >= 50;
 }
 
 // NOTE: assumes game is over (last call to moves() returned empty) and

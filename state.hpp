@@ -12,6 +12,7 @@
 #include "move_generation.hpp"
 #include "hash.hpp"
 #include "undo.hpp"
+#include "targets.hpp"
 
 class State {
 public:
@@ -58,9 +59,9 @@ public:
   Undo make_move(const Move& move);
   void unmake_move(const Undo& undo);
 
-  void compute_occupancy();
-  void compute_their_attacks();
-  void compute_hash();
+  inline void compute_occupancy()     { compute_occupancy(occupancy, flat_occupancy); }
+  inline void compute_their_attacks() { compute_their_attacks(their_attacks); }
+  inline void compute_hash()          { compute_hash(hash); }
 
   void compute_occupancy(Occupancy& occupancy, Bitboard& flat_occupancy) const;
   void compute_their_attacks(Bitboard& their_attacks) const;
@@ -68,11 +69,33 @@ public:
 
   boost::optional<ColoredPiece> colored_piece_at(squares::Index square) const;
   Piece piece_at(squares::Index square, Color color) const;
-  bool can_castle(Castle castle) const;
-  bool in_check() const;
-  bool their_king_attacked() const;
-  bool our_king_captured() const;
-  bool game_definitely_over() const;
-  bool drawn_by_50() const;
   boost::optional<Color> winner() const;
+
+  inline bool can_castle(Castle castle) const {
+    return castling_rights[us][castle]
+      && !(castles::safe_squares(us, castle) & their_attacks)
+      && !(castles::free_squares(us, castle) & flat_occupancy);
+  }
+
+  inline bool in_check() const {
+    return their_attacks & board[us][pieces::king];
+  }
+
+  inline bool their_king_attacked() const {
+    return targets::any_attacked(board[them][pieces::king], flat_occupancy, us, board[us]);
+  }
+
+  inline bool our_king_captured() const {
+    return bitboard::is_empty(board[us][pieces::king]);
+  }
+
+  // may return false on games that are over (too expensive to generate moves),
+  // but will not return true on games that are not over
+  inline bool game_definitely_over() const {
+    return drawn_by_50() || our_king_captured();
+  }
+
+  inline bool drawn_by_50() const {
+    return halfmove_clock >= 50;
+  }
 };

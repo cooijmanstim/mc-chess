@@ -88,6 +88,7 @@ namespace squares {
 
 // the partitions below all need to have this procedure to look up a part by square index
 #define BY_SQUARE(spacename) \
+  __attribute__((always_inline)) \
   inline Index by_square(squares::Index si) { \
     static auto by_square = [](){ \
       std::array<Index, squares::cardinality> by_square; \
