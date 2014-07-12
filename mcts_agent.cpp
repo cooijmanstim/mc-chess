@@ -61,10 +61,10 @@ Move MCTSAgent::decide() {
   throw std::runtime_error("not implemented");
 }
 
-boost::future<Move> MCTSAgent::start_decision() {
+boost::future<Move> MCTSAgent::start_decision(size_t time_budget) {
   start_pondering();
-  return boost::async([this]() {
-      boost::this_thread::sleep_for(boost::chrono::seconds(30));
+  return boost::async([&]() {
+      boost::this_thread::sleep_for(boost::chrono::seconds(time_budget));
       std::cout << "mcts result for state: " << std::endl;
       std::cout << *state << std::endl;
       std::cout << "candidate moves: " << std::endl;
@@ -77,6 +77,7 @@ boost::future<Move> MCTSAgent::start_decision() {
       return *move;
     });
 }
+
 void MCTSAgent::finalize_decision() {
   // FIXME
 }

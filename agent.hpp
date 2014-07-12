@@ -18,8 +18,8 @@ public:
   // decide synchronously
   virtual Move decide() = 0;
 
-  // decide asynchronously
-  virtual boost::future<Move> start_decision() = 0;
+  // decide asynchronously (time_budget in seconds)
+  virtual boost::future<Move> start_decision(size_t time_budget) = 0;
   // tell the decision process to make up its mind
   virtual void finalize_decision() = 0;
   // tell the decision process to nevermind
