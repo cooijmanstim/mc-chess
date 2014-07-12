@@ -64,12 +64,18 @@ namespace mcts {
   };
 
   class NodeTable {
-    static const size_t HASH_KEY_LENGTH = 16;
+    static const size_t HASH_KEY_LENGTH = 23;
     static const size_t HASH_KEY_CARDINALITY = 1 << HASH_KEY_LENGTH;
+    static_assert(HASH_KEY_CARDINALITY > 0, "size_t too small to contain key cardinality");
     static const size_t HASH_KEY_MASK = HASH_KEY_CARDINALITY - 1;
-    std::array<Node, HASH_KEY_CARDINALITY> nodes;
+    std::vector<Node> nodes;
 
   public:
+    NodeTable()
+      : nodes(HASH_KEY_CARDINALITY)
+    {
+    }
+
     static inline size_t key(const State& state) {
       return key(state.hash);
     }
