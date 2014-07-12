@@ -53,7 +53,7 @@ public:
   void ponder(boost::mt19937 generator);
 
   Move decide();
-  boost::future<Move> start_decision();
+  boost::future<Move> start_decision(size_t time_budget);
   void finalize_decision();
   void abort_decision();
 

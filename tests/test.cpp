@@ -408,10 +408,10 @@ BOOST_AUTO_TEST_CASE(mcts_agent) {
   State state;
   MCTSAgent agent(2);
   agent.set_state(state);
-  auto decision = agent.start_decision();
+  auto decision = agent.start_decision(5);
   Move move = decision.get();
   agent.advance_state(move);
-  decision = agent.start_decision();
+  decision = agent.start_decision(5);
   decision.get();
 }
 
@@ -424,10 +424,10 @@ BOOST_AUTO_TEST_CASE(mcts_agent_certain_win) {
   State state("rn4nr/p4N1p/6p1/1p1Q3k/1Pp4P/8/PP1PPP1P/RNB1KBR1 b Q - 0 0");
   MCTSAgent agent(2);
   agent.set_state(state);
-  auto decision = agent.start_decision();
+  auto decision = agent.start_decision(5);
   decision.get();
   agent.advance_state(Move(squares::g6, squares::g5, move_types::normal));
-  decision = agent.start_decision();
+  decision = agent.start_decision(5);
   decision.get();
 }
 

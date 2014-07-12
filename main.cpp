@@ -74,6 +74,8 @@ const std::vector<std::string> features = {
 void interface_with(std::istream& in, std::ostream& out) {
   out.setf(std::ios::unitbuf);
 
+  unsigned time_budget = 30;
+
   bool debug = false;
   
   Game game;
@@ -153,7 +155,7 @@ void interface_with(std::istream& in, std::ostream& out) {
         agent_color = game.color_to_move();
         agent.set_state(game.current_state());
         agent.start_pondering();
-        future_decision = agent.start_decision();
+        future_decision = agent.start_decision(time_budget);
       }},
     {"playother", [&](ARGV argv) {
         protocol_assert(!agent_color, "expected \"playother\" only in force mode");
@@ -182,7 +184,7 @@ void interface_with(std::istream& in, std::ostream& out) {
         if (agent_color) {
           agent.advance_state(move);
           agent.start_pondering();
-          future_decision = agent.start_decision();
+          future_decision = agent.start_decision(time_budget);
         }
       }},
     {"?", [&](ARGV argv) {
