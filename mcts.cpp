@@ -11,13 +11,16 @@ void Node::initialize(State const& state) {
 }
 
 void Node::update(double result) {
-  statistics(result);
+  double variance0 = variance(this);
+  results(result);
+  double variance1 = variance(this);
+  variance_derivatives(variance1 - variance0);
 }
 
 double Node::selection_criterion(Node const* node) {
-  if (sample_size(node) < 30)
+  if (sample_size(node) < 5)
     return 1e6;
-  return mean(node) + 0.5 * sqrt(variance(node)) / log(sample_size(node));
+  return mean(node) + sqrt(variance(node)) - sqrt(variance_derivative(node));
 }
 
 void Node::adjoin_parent(Node* parent) {
@@ -51,7 +54,7 @@ double Node::rollout(State& state, boost::mt19937& generator) {
 }
 
 std::string Node::format_statistics() {
-  return str(boost::format("%1% %2% %3% %4% (%5% parents)") % sample_size(this) % mean(this) % variance(this) % selection_criterion(this) % parents.size());
+  return str(boost::format("%1% %2% %3% (%4% derivative) (%5% selection) (%6% parents)") % sample_size(this) % mean(this) % variance(this) % variance_derivative(this) % selection_criterion(this) % parents.size());
 }
 
 Node* NodeTable::get(Hash hash) {

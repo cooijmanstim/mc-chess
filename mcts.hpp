@@ -7,6 +7,7 @@
 #include <boost/noncopyable.hpp>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
+#include <boost/accumulators/statistics/rolling_mean.hpp>
 
 #include "state.hpp"
 
@@ -29,17 +30,23 @@ namespace mcts {
 
     Hash hash;
 
-    ac::accumulator_set<double, ac::stats<ac::tag::count, ac::tag::mean, ac::tag::variance> > statistics;
+    ac::accumulator_set<double, ac::stats<ac::tag::count, ac::tag::mean, ac::tag::variance> > results;
+    ac::accumulator_set<double, ac::stats<ac::tag::rolling_mean> > variance_derivatives;
+
+    inline Node()
+      : variance_derivatives(ac::tag::rolling_window::window_size = 5) {
+    }
 
     void initialize(State const& state);
     void adjoin_parent(Node* parent);
     double rollout(State& state, boost::mt19937& generator);
-    void update(double result);
+    inline void update(double result);
     static double selection_criterion(Node const* node);
 
-    static inline size_t sample_size(Node const* node) { return ac::count(node->statistics); }
-    static inline double mean(Node const* node) { return ac::mean(node->statistics); }
-    static inline double variance(Node const* node) { return ac::variance(node->statistics); }
+    static inline size_t sample_size(Node const* node) { return ac::count(node->results); }
+    static inline double mean(Node const* node) { return ac::mean(node->results); }
+    static inline double variance(Node const* node) { return ac::variance(node->results); }
+    static inline double variance_derivative(Node const* node) { return ac::rolling_mean(node->variance_derivatives); }
 
     template <typename F>
     inline void do_successors(State state, F f) {
