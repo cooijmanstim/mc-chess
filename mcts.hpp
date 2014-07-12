@@ -24,7 +24,7 @@ namespace mcts {
 
   class Node : boost::noncopyable {
   public:
-    std::vector<Node*> parents;
+    std::set<Node*> parents;
     std::mutex parents_mutex;
 
     Hash hash;

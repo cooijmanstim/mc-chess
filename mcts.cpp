@@ -22,10 +22,7 @@ double Node::selection_criterion(Node const* node) {
 
 void Node::adjoin_parent(Node* parent) {
   std::lock_guard<std::mutex> lock(parents_mutex);
-  // TODO: would be better to search from end to beginning, more likely to
-  // be at the end
-  if (std::find(parents.begin(), parents.end(), parent) == parents.end())
-    parents.push_back(parent);
+  parents.insert(parent);
 }
 
 double Node::rollout(State& state, boost::mt19937& generator) {
