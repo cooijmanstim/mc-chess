@@ -24,29 +24,33 @@ namespace mcts {
   }
 
   class Node : boost::noncopyable {
+    size_t m_sample_size;
+    // mean empirical result
+    double m_mean;
+    // estimated derivative of mean with respect to sample size
+    double m_derivative;
+
   public:
     std::set<Node*> parents;
     std::mutex parents_mutex;
 
     Hash hash;
 
-    ac::accumulator_set<double, ac::stats<ac::tag::count, ac::tag::mean, ac::tag::variance> > results;
-    ac::accumulator_set<double, ac::stats<ac::tag::rolling_mean> > variance_derivatives;
-
-    inline Node()
-      : variance_derivatives(ac::tag::rolling_window::window_size = 5) {
-    }
-
     void initialize(State const& state);
     void adjoin_parent(Node* parent);
     double rollout(State& state, boost::mt19937& generator);
     inline void update(double result);
-    static double selection_criterion(Node const* node);
 
-    static inline size_t sample_size(Node const* node) { return ac::count(node->results); }
-    static inline double mean(Node const* node) { return ac::mean(node->results); }
-    static inline double variance(Node const* node) { return ac::variance(node->results); }
-    static inline double variance_derivative(Node const* node) { return ac::rolling_mean(node->variance_derivatives); }
+    inline double sample_size() const { return m_sample_size; }
+    inline double mean() const { return m_mean; }
+    inline double derivative() const { return m_derivative; }
+    inline double selection_criterion() const {
+      return m_mean + 10*m_derivative;
+    }
+    inline double selection_criterion(boost::mt19937& generator) const {
+      double noise = standard_normal_distribution(generator);
+      return selection_criterion() + m_derivative*noise;
+    }
 
     template <typename F>
     inline void do_successors(State state, F f) {

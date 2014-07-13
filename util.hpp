@@ -24,3 +24,5 @@ T random_element(std::vector<T> const& elements, boost::mt19937& generator) {
   boost::uniform_int<> distribution(0, elements.size() - 1);
   return elements.at(distribution(generator));
 }
+
+extern boost::normal_distribution<double> standard_normal_distribution;

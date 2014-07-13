@@ -45,3 +45,4 @@ std::vector<std::string> words(std::string string) {
   return words;
 }
 
+boost::normal_distribution<double> standard_normal_distribution;

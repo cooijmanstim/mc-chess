@@ -11,16 +11,11 @@ void Node::initialize(State const& state) {
 }
 
 void Node::update(double result) {
-  double variance0 = variance(this);
-  results(result);
-  double variance1 = variance(this);
-  variance_derivatives(variance1 - variance0);
-}
-
-double Node::selection_criterion(Node const* node) {
-  if (sample_size(node) < 5)
-    return 1e6;
-  return mean(node) + sqrt(variance(node)) - sqrt(variance_derivative(node));
+  m_sample_size++;
+  double mean0 = m_mean;
+  double delta = result - mean0;
+  m_mean += delta/m_sample_size;
+  m_derivative = 0.9*m_derivative + 0.1*(m_mean - mean0);
 }
 
 void Node::adjoin_parent(Node* parent) {
@@ -54,7 +49,12 @@ double Node::rollout(State& state, boost::mt19937& generator) {
 }
 
 std::string Node::format_statistics() {
-  return str(boost::format("%1% %2% %3% (%4% derivative) (%5% selection) (%6% parents)") % sample_size(this) % mean(this) % variance(this) % variance_derivative(this) % selection_criterion(this) % parents.size());
+  return str(boost::format("%1% %2% (d %3%) %4% (%5% parents)")
+             % sample_size()
+             % mean()
+             % derivative()
+             % selection_criterion()
+             % parents.size());
 }
 
 Node* NodeTable::get(Hash hash) {
@@ -78,7 +78,7 @@ void Graph::sample(State state, boost::mt19937& generator) {
   std::unordered_set<Hash> path;
 
   // selection
-  while (Node::sample_size(node) > 0) {
+  while (node->sample_size() > 0) {
     path.insert(node->hash);
 
     Node* child = select_child(node, state, generator);
@@ -113,15 +113,14 @@ Node* Graph::select_child(Node* node, State& state, boost::mt19937& generator) {
     Undo undo = state.make_move(curr_move);
     Node* curr_child = nodes.get_or_create(state);
 
-    bool new_node = curr_child->parents.empty();
     curr_child->adjoin_parent(node);
-    if (new_node)
+    if (curr_child->sample_size() < 30)
       // select new nodes unconditionally
       return curr_child;
 
     // if legal
     if (!state.their_king_attacked()) {
-      double curr_score = Node::selection_criterion(curr_child);
+      double curr_score = curr_child->selection_criterion(generator);
       if (!best_move || curr_score > best_score) {
         best_move  = curr_move;
         best_child = curr_child;
@@ -219,10 +218,9 @@ void Graph::print_statistics(std::ostream& os, State state) {
 }
 
 boost::optional<Move> Graph::principal_move(State state) {
-  // NOTE: we don't simply select the move with the best score. we also
-  // want the subtree to be well explored.  the most-explored node should
-  // have both of these properties.
-  return select_successor_by(state, Node::sample_size);
+  return select_successor_by(state, [](Node const* node) {
+      return node->mean();
+    });
 }
 
 void Graph::print_principal_variation(std::ostream& os, State state) {
@@ -236,7 +234,7 @@ void Graph::print_principal_variation(std::ostream& os, State state, std::set<Ha
     return;
   state.make_move(*move);
   Node* child = nodes.get_or_create(state);
-  if (Node::sample_size(child) == 0 || path.count(child->hash) > 0)
+  if (child->sample_size() == 0 || path.count(child->hash) > 0)
     return;
   path.insert(child->hash);
   os << *move << " " << child->format_statistics() << std::endl;
