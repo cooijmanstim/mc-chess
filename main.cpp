@@ -74,7 +74,7 @@ const std::vector<std::string> features = {
 void interface_with(std::istream& in, std::ostream& out) {
   out.setf(std::ios::unitbuf);
 
-  unsigned time_budget = 30;
+  unsigned time_budget = 60;
 
   bool debug = false;
   
