@@ -253,6 +253,12 @@ void moves::legal_moves(std::vector<Move>& moves, State& state) {
   erase_illegal_moves(moves, state);
 }
 
+std::vector<Move> moves::legal_moves(State& state) {
+  std::vector<Move> result;
+  legal_moves(result, state);
+  return result;
+}
+
 void moves::erase_illegal_moves(std::vector<Move>& moves, State& state) {
   for (auto it = moves.begin(); it != moves.end(); ) {
     Undo undo = state.make_move(*it);

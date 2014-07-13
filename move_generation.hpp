@@ -23,9 +23,10 @@ namespace moves {
   void pawn_moves_occupying(std::vector<Move>& moves, State const& state, squares::Index target);
   void pawn_moves_capturing(std::vector<Move>& moves, State const& state, squares::Index target);
   void moves(std::vector<Move>& moves, State const& state);
-  std::vector<Move> moves(State const& state);
   void check_evading_moves(std::vector<Move>& moves, State const& state);
   void legal_moves(std::vector<Move>& moves, State& state);
+  std::vector<Move> moves(State const& state);
+  std::vector<Move> legal_moves(State& state);
   void erase_illegal_moves(std::vector<Move>& moves, State& state);
   boost::optional<Move> maybe_fast_random_move(State const& state, boost::mt19937& generator);
   boost::optional<Move> random_move(State const& state, boost::mt19937& generator);

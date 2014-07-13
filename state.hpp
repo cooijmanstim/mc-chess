@@ -95,6 +95,10 @@ public:
     return drawn_by_50() || our_king_captured();
   }
 
+  inline bool game_over() {
+    return game_definitely_over() || moves::legal_moves(*this).empty();
+  }
+
   inline bool drawn_by_50() const {
     return halfmove_clock >= 50;
   }

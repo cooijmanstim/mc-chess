@@ -2,9 +2,10 @@ import testing ;
 
 use-project /boost : /home/tim/src/boost_1_55_0 ;
 
-lib game : [ glob *.cpp : main.cpp ] /boost//regex /boost//thread : <variant>debug:<define>MC_EXPENSIVE_RUNTIME_TESTS <cflags>-flto=2 ;
+lib game : [ glob *.cpp : main.cpp selfplay.cpp ] /boost//regex /boost//thread : <variant>debug:<define>MC_EXPENSIVE_RUNTIME_TESTS <cflags>-flto=2 ;
 
 exe main : main.cpp game /boost//regex /boost//thread ;
+exe selfplay : selfplay.cpp game /boost//regex /boost//thread ;
 
 for test in [ glob tests/*.cpp ] {
     unit-test $(test:B) : $(test) game /boost//regex /boost//thread ;
