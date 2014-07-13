@@ -84,6 +84,7 @@ void Graph::sample(State state, boost::mt19937& generator) {
     Node* child = select_child(node, state, generator);
     if (!child) {
       // no legal successors; loss
+      // FIXME: may be stalemate!
       backprop(node, loss_value);
       return;
     }
