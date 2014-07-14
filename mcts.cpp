@@ -1,7 +1,7 @@
 #include "mcts.hpp"
 #include "notation.hpp"
 
-#include <queue>
+#include <stack>
 
 #include <boost/range/algorithm/random_shuffle.hpp>
 
@@ -156,7 +156,7 @@ void Graph::backprop(Node* node, double initial_result) {
     }
   };
 
-  std::queue<std::pair<Node*, double> > backlog;
+  std::stack<std::pair<Node*, double> > backlog;
   backlog.emplace(node, initial_result);
   
 #ifdef MC_EXPENSIVE_RUNTIME_TESTS
@@ -164,7 +164,7 @@ void Graph::backprop(Node* node, double initial_result) {
 #endif
 
   while (!backlog.empty()) {
-    std::pair<Node*, double> pair = backlog.front();
+    std::pair<Node*, double> pair = backlog.top();
     backlog.pop();
     
     Node* node = pair.first;
@@ -221,17 +221,17 @@ boost::optional<Move> Graph::principal_move(State state) {
 }
 
 void Graph::print_principal_variation(std::ostream& os, State state) {
-  std::set<Hash> path;
+  sorted_vector<Hash> path;
   print_principal_variation(os, state, path);
 }
 
-void Graph::print_principal_variation(std::ostream& os, State state, std::set<Hash>& path) {
+void Graph::print_principal_variation(std::ostream& os, State state, sorted_vector<Hash>& path) {
   boost::optional<Move> move = principal_move(state);
   if (!move)
     return;
   state.make_move(*move);
   Node* child = nodes.get_or_create(state);
-  if (child->sample_size() == 0 || path.count(child->hash) > 0)
+  if (child->sample_size() == 0 || path.contains(child->hash))
     return;
   path.insert(child->hash);
   os << *move << " " << child->format_statistics() << std::endl;

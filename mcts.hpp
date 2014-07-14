@@ -10,6 +10,7 @@
 #include <boost/accumulators/statistics/rolling_mean.hpp>
 
 #include "state.hpp"
+#include "sorted_vector.hpp"
 
 namespace mcts {
   namespace ac = boost::accumulators;
@@ -31,7 +32,7 @@ namespace mcts {
     double m_derivative;
 
   public:
-    std::set<Node*> parents;
+    sorted_vector<Node*> parents;
     std::mutex parents_mutex;
 
     Hash hash;
@@ -110,7 +111,7 @@ namespace mcts {
     boost::optional<Move> principal_move(State state);
     void print_statistics(std::ostream& os, State state);
     void print_principal_variation(std::ostream& os, State state);
-    void print_principal_variation(std::ostream& os, State state, std::set<Hash>& path);
+    void print_principal_variation(std::ostream& os, State state, sorted_vector<Hash>& path);
     void graphviz(std::ostream& os, Node* node, State state, boost::optional<Move> last_move);
   };
 }
