@@ -2,7 +2,8 @@
 #include "notation.hpp"
 
 #include <queue>
-#include <bitset>
+
+#include <boost/range/algorithm/random_shuffle.hpp>
 
 using namespace mcts;
 
@@ -21,31 +22,6 @@ void Node::update(double result) {
 void Node::adjoin_parent(Node* parent) {
   std::lock_guard<std::mutex> lock(parents_mutex);
   parents.insert(parent);
-}
-
-double Node::rollout(State& state, boost::mt19937& generator) {
-  Color initial_player = state.us;
-#ifdef MC_EXPENSIVE_RUNTIME_TESTS
-  State initial_state(state);
-  std::vector<Move> move_history; // for debugging
-#endif
-  while (true) {
-    if (state.drawn_by_50())
-      return draw_value;
-    boost::optional<Move> move = moves::random_move(state, generator);
-    //boost::optional<Move> move = moves::make_random_legal_move(state, generator);
-    if (!move)
-      break;
-    state.make_move(*move);
-#ifdef MC_EXPENSIVE_RUNTIME_TESTS
-    move_history.push_back(*move);
-    state.require_consistent();
-#endif
-  }
-  boost::optional<Color> winner = state.winner();
-  if (!winner)
-    return draw_value;
-  return *winner == initial_player ? win_value : loss_value;
 }
 
 std::string Node::format_statistics() {
@@ -75,69 +51,90 @@ Node* NodeTable::get_or_create(State const& state) {
 
 void Graph::sample(State state, boost::mt19937& generator) {
   Node* node = nodes.get_or_create(state);
-  std::unordered_set<Hash> path;
+  sorted_vector<Hash> path;
+
+  double result;
 
   // selection
-  while (node->sample_size() > 0) {
+  while (true) {
     path.insert(node->hash);
 
     Node* child = select_child(node, state, generator);
+
     if (!child) {
-      // no legal successors; loss
-      backprop(node, loss_value);
-      return;
+      // no legal successors; game over
+      boost::optional<Color> winner = state.winner();
+      result = !winner
+        ? draw_value
+        : (*winner == state.us
+           ? win_value
+           : loss_value);
+      break;
     }
-    if (path.count(child->hash) > 0) {
-      // repeated state selected; draw by repetition
-      backprop(node, draw_value);
-      return;
+
+    if (state.drawn_by_50() || path.contains(child->hash)) {
+      // draw per 50-move rule or by choosing repetition
+      result = draw_value;
+      break;
     }
+
     node = child;
   }
 
-  double result = node->rollout(state, generator);
   backprop(node, result);
 }
 
 // returns nullptr if no legal successor states
 // NOTE: state will be modified to be the corresponding successor
 Node* Graph::select_child(Node* node, State& state, boost::mt19937& generator) {
-  std::vector<Move> moves;
-  moves::moves(moves, state);
+  if (node->sample_size() < 30) {
+    // don't waste time with unreliable statistics
+    boost::optional<Move> move = moves::make_random_legal_move(state, generator);
+    if (!move)
+      return nullptr;
+    Node* child = nodes.get_or_create(state);
+    child->adjoin_parent(node);
+    return child;
+  } else {
+    // use statistics to make selection
+    std::vector<Move> moves;
+    moves::moves(moves, state);
 
-  // find a legal move with maximum selection criterion.
-  boost::optional<Move> best_move;
-  Node* best_child;
-  double best_score;
-  for (Move curr_move: moves) {
-    Undo undo = state.make_move(curr_move);
-    Node* curr_child = nodes.get_or_create(state);
-
-    curr_child->adjoin_parent(node);
-    if (curr_child->sample_size() < 30)
-      // select new nodes unconditionally
-      return curr_child;
-
-    // if legal
-    if (!state.their_king_attacked()) {
-      double curr_score = curr_child->selection_criterion(generator);
-      if (!best_move || curr_score > best_score) {
-        best_move  = curr_move;
-        best_child = curr_child;
-        best_score = curr_score;
-      }
-    }
+    // find a legal move with maximum selection criterion.
+    boost::optional<Move> best_move;
+    Node* best_child;
+    double best_score;
     
-    state.unmake_move(undo);
+    for (Move curr_move: moves) {
+      Undo undo = state.make_move(curr_move);
+      
+      // if legal
+      if (!state.their_king_attacked()) {
+        Node* curr_child = nodes.get_or_create(state);
+        
+        curr_child->adjoin_parent(node);
+        if (curr_child->sample_size() < 10)
+          // select new nodes unconditionally
+          return curr_child;
+        
+        double curr_score = curr_child->selection_criterion(generator);
+        if (!best_move || curr_score > best_score) {
+          best_move  = curr_move;
+          best_child = curr_child;
+          best_score = curr_score;
+        }
+      }
+      
+      state.unmake_move(undo);
+    }
+
+    if (!best_move)
+      return nullptr;
+    state.make_move(*best_move);
+    return best_child;
   }
-
-  if (!best_move)
-    return nullptr;
-  
-  state.make_move(*best_move);
-  return best_child;
 }
-
+  
 // update the node and all of its ancestors.  the graph is likely to be
 // cyclic due to reversible moves.  we traverse it in a breadth-first
 // manner so that the updates run along the shortest paths to each
