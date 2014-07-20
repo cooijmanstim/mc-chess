@@ -25,7 +25,7 @@ namespace mcts {
     return 1 - result;
   }
 
-  class Node : boost::noncopyable {
+  class Node {
     size_t m_sample_size;
     // mean empirical result
     double m_mean;
@@ -33,7 +33,7 @@ namespace mcts {
     double m_derivative;
 
   public:
-    sorted_vector<Node*> parents;
+    sorted_vector<Hash> parents;
     std::mutex parents_mutex;
 
     Hash hash;
@@ -93,7 +93,7 @@ namespace mcts {
     template <typename F>
     inline void do_parents(F f) {
       std::lock_guard<std::mutex> lock(parents_mutex);
-      for (Node* parent: parents) {
+      for (Hash parent: parents) {
         f(parent);
       }
     }
