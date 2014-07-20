@@ -1,5 +1,7 @@
 #pragma once
 
+#include <fstream>
+
 #include <boost/random.hpp>
 
 #include "prettyprint.hpp"
@@ -37,4 +39,9 @@ namespace boost {
       ar & boost::serialization::make_array(a.data(), a.size());
     }
   }
+}
+
+inline bool file_readable(std::string path) {
+  std::ifstream infile(path);
+  return infile.good();
 }
