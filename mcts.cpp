@@ -184,8 +184,6 @@ void Graph::backprop(Node* node, double initial_result) {
         if (!encountered(parent))
           backlog.emplace(nodes.get(parent), parent_result);
       });
-
-    assert(backlog.size() < 1e4);
   }
 }
 
