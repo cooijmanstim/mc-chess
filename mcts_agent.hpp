@@ -1,10 +1,11 @@
 #pragma once
 
 #include <boost/random.hpp>
+#include <boost/noncopyable.hpp>
+#include <fstream>
 
 #include "agent.hpp"
 #include "sometimes.hpp"
-#include <boost/noncopyable.hpp>
 
 #include "mcts.hpp"
 
@@ -62,4 +63,12 @@ public:
   void idle();
   void pause();
   void resume();
+
+  void save_yourself(std::string path);
+  void load_yourself(std::string path);
+
+  template<class Archive>
+  inline void serialize_graph(Archive& a) {
+    a & graph;
+  }
 };

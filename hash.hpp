@@ -14,11 +14,21 @@
 typedef uint64_t Hash;
 
 namespace hashes {
+  // all members should be considered const -- cannot make them const because
+  // of serialization.
   struct Hashes {
     Hash black_to_move;
     array3d<Hash, squares::cardinality, colors::cardinality, pieces::cardinality> colored_piece_at_square;
     array2d<Hash, colors::cardinality, castles::cardinality> can_castle;
     std::array<Hash, files::cardinality> en_passant;
+
+    template<class Archive>
+    inline void serialize(Archive& a, const unsigned int version) {
+      a & black_to_move;
+      a & colored_piece_at_square;
+      a & can_castle;
+      a & en_passant;
+    }
   };
 
   inline Hash generate_random_feature() {
@@ -28,8 +38,8 @@ namespace hashes {
     return generator();
   }
 
-  inline const Hashes& get_hashes() {
-    const static Hashes hashes = {
+  inline Hashes& get_hashes() {
+    static Hashes hashes = {
       generate_random_feature(),
       []() {
         array3d<Hash, squares::cardinality, colors::cardinality, pieces::cardinality> x;

@@ -431,18 +431,20 @@ BOOST_AUTO_TEST_CASE(mcts_agent_certain_win) {
   decision.get();
 }
 
-BOOST_AUTO_TEST_CASE(mcts_speedtest) {
-  std::cout << "cumulative sampling durations for initial state:" << std::endl;
-  boost::mt19937 generator;
-  State state;
-  mcts::Graph graph;
-  auto then = std::chrono::high_resolution_clock::now();
-  for (int i = 1; i <= 1e4; i++) {
-    graph.sample(state, generator);
-    if (i % 1000 == 0) {
-      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - then);
-      std::cout << i << " " << duration.count() << std::endl;
-    }
+BOOST_AUTO_TEST_CASE(serialize_mcts_agent) {
+  MCTSAgent agent(2);
+  agent.set_state(State());
+  {
+    auto decision = agent.start_decision(1);
+    Move move = decision.get();
+    agent.advance_state(move);
+  }
+  agent.save_yourself("/tmp/serialized_mcts_agent");
+  agent.load_yourself("/tmp/serialized_mcts_agent");
+  {
+    auto decision = agent.start_decision(1);
+    Move move = decision.get();
+    agent.advance_state(move);
   }
 }
 

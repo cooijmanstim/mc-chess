@@ -1,6 +1,9 @@
 #include "mcts_agent.hpp"
 #include "mcts.hpp"
 
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+
 MCTSAgent::MCTSAgent(unsigned nponderers)
   : pending_change(false),
     barrier_before_change(nponderers + 1),
@@ -100,4 +103,20 @@ void MCTSAgent::pause() {
 }
 void MCTSAgent::resume() {
   start_pondering();
+}
+
+void MCTSAgent::save_yourself(std::string path) {
+  between_ponderings([this, path]() {
+      std::ofstream ofs(path);
+      boost::archive::binary_oarchive oa(ofs);
+      serialize_graph(oa);
+    });
+}
+
+void MCTSAgent::load_yourself(std::string path) {
+  between_ponderings([this, path]() {
+      std::ifstream ifs(path);
+      boost::archive::binary_iarchive ia(ifs);
+      serialize_graph(ia);
+    });
 }
