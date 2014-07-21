@@ -5,6 +5,14 @@ struct sorted_vector {
   std::vector<T> V;
   Compare cmp;
 
+  friend class boost::serialization::access;
+  template<class Archive>
+  inline void serialize(Archive& a, const unsigned int version) {
+    // FIXME: passing a different value for template parameter Compare
+    // will lead to silent failures
+    a & V;
+  }
+
   typedef typename std::vector<T>::iterator iterator;
   typedef typename std::vector<T>::const_iterator const_iterator;
   inline iterator begin() { return V.begin(); }

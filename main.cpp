@@ -71,15 +71,26 @@ const std::vector<std::string> features = {
   "done=1",
 };
 
-void interface_with(std::istream& in, std::ostream& out) {
+int main(int argc, char* argv[]) {
+  std::istream& in = std::cin;
+  std::ostream& out = std::cout;
+
   out.setf(std::ios::unitbuf);
 
   unsigned time_budget = 60;
 
   bool debug = false;
   
+  // if present, this is the path to a file where the agent is to be serialized.
+  boost::optional<std::string> path_to_storage;
+  if (argc > 0)
+    path_to_storage = std::string(argv[1]);
+
   Game game;
   MCTSAgent agent(2);
+  if (path_to_storage && file_readable(*path_to_storage))
+    agent.load_yourself(*path_to_storage);
+
   boost::optional<Color> agent_color;
 
   boost::future<void> future_quit;
@@ -252,6 +263,8 @@ void interface_with(std::istream& in, std::ostream& out) {
     send_command("move " + notation::coordinate::format(move));
     game.make_move(move);
     agent.advance_state(move);
+    if (path_to_storage)
+      agent.save_yourself(*path_to_storage);
     // there has to be a better way to make sure we don't keep redetecting
     // the same future decision value, but i don't know it.  really, the
     // wait_for_any function should wait for any one of them to turn from
@@ -311,8 +324,4 @@ void interface_with(std::istream& in, std::ostream& out) {
 
   quit:
   ;
-}
-
-int main(int argc, char* argv[]) {
-  interface_with(std::cin, std::cout);
 }

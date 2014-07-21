@@ -2,11 +2,19 @@ import testing ;
 
 use-project /boost : /home/tim/src/boost_1_55_0 ;
 
-lib game : [ glob *.cpp : main.cpp selfplay.cpp ] /boost//regex /boost//thread : <variant>debug:<define>MC_EXPENSIVE_RUNTIME_TESTS <cflags>-flto=2 ;
+project mcchess
+        : requirements <library>/boost//regex
+                       <library>/boost//thread
+                       <library>/boost//serialization
+                       <cflags>"-flto=2 -ftemplate-depth=196"
+;
 
-exe main : main.cpp game /boost//regex /boost//thread ;
-exe selfplay : selfplay.cpp game /boost//regex /boost//thread ;
+lib game : [ glob *.cpp : main.cpp speedtest.cpp selfplay.cpp ] : <variant>debug:<define>MC_EXPENSIVE_RUNTIME_TESTS ;
+
+exe main : main.cpp game ;
+exe selfplay : selfplay.cpp game ;
+exe speedtest : speedtest.cpp game ;
 
 for test in [ glob tests/*.cpp ] {
-    unit-test $(test:B) : $(test) game /boost//regex /boost//thread ;
+    unit-test $(test:B) : $(test) game ;
 }

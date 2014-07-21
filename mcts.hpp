@@ -8,6 +8,7 @@
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 #include <boost/accumulators/statistics/rolling_mean.hpp>
+#include <boost/serialization/vector.hpp>
 
 #include "state.hpp"
 #include "sorted_vector.hpp"
@@ -24,7 +25,7 @@ namespace mcts {
     return 1 - result;
   }
 
-  class Node : boost::noncopyable {
+  class Node {
     size_t m_sample_size;
     // mean empirical result
     double m_mean;
@@ -32,10 +33,35 @@ namespace mcts {
     double m_derivative;
 
   public:
-    sorted_vector<Node*> parents;
+    sorted_vector<Hash> parents;
     std::mutex parents_mutex;
 
     Hash hash;
+
+    friend class boost::serialization::access;
+    template<class Archive>
+    inline void serialize(Archive& a, const unsigned int version) {
+      a & m_sample_size;
+      a & m_mean;
+      a & m_derivative;
+      a & hash;
+      a & parents;
+    }
+
+    inline Node()
+      : m_sample_size(0),
+        m_mean(draw_value),
+        m_derivative(0)
+    {}
+
+    // serialization requires a copy constructor.
+    inline Node(Node const& that)
+      : m_sample_size(that.m_sample_size),
+        m_mean(that.m_mean),
+        m_derivative(that.m_derivative),
+        parents(that.parents),
+        hash(that.hash)
+    {}
 
     void initialize(State const& state);
     void adjoin_parent(Node* parent);
@@ -67,7 +93,7 @@ namespace mcts {
     template <typename F>
     inline void do_parents(F f) {
       std::lock_guard<std::mutex> lock(parents_mutex);
-      for (Node* parent: parents) {
+      for (Hash parent: parents) {
         f(parent);
       }
     }
@@ -98,6 +124,22 @@ namespace mcts {
 
     Node* get(Hash hash);
     Node* get_or_create(State const& state);
+
+    friend class boost::serialization::access;
+    template<class Archive>
+    inline void serialize(Archive& a, const unsigned int version) {
+      a & hashes::get_hashes();
+
+      // if writing, store hash key length
+      // if reading, check hash key length
+      // need to put it into a temporary because HASH_KEY_LENGTH is const
+      size_t hash_key_length = HASH_KEY_LENGTH;
+      a & hash_key_length;
+      if (hash_key_length != HASH_KEY_LENGTH)
+        throw std::runtime_error("stored data uses different hash key length");
+
+      a & nodes;
+    }
   };
 
   class Graph {
@@ -113,5 +155,11 @@ namespace mcts {
     void print_principal_variation(std::ostream& os, State state);
     void print_principal_variation(std::ostream& os, State state, sorted_vector<Hash>& path);
     void graphviz(std::ostream& os, Node* node, State state, boost::optional<Move> last_move);
+
+    friend class boost::serialization::access;
+    template<class Archive>
+    inline void serialize(Archive& a, const unsigned int version) {
+      a & nodes;
+    }
   };
 }

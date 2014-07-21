@@ -21,7 +21,7 @@ void Node::update(double result) {
 
 void Node::adjoin_parent(Node* parent) {
   std::lock_guard<std::mutex> lock(parents_mutex);
-  parents.insert(parent);
+  parents.insert(parent->hash);
 }
 
 std::string Node::format_statistics() {
@@ -147,11 +147,11 @@ void Graph::backprop(Node* node, double initial_result) {
   initial_result = invert_result(initial_result);
 
   std::unordered_set<Hash> encountered_nodes;
-  auto encountered = [&](Node* node) {
-    if (encountered_nodes.count(node->hash) > 0) {
+  auto encountered = [&](Hash hash) {
+    if (encountered_nodes.count(hash) > 0) {
       return true;
     } else {
-      encountered_nodes.insert(node->hash);
+      encountered_nodes.insert(hash);
       return false;
     }
   };
@@ -180,12 +180,10 @@ void Graph::backprop(Node* node, double initial_result) {
     node->update(result);
 
     double parent_result = invert_result(result);
-    node->do_parents([&](Node* parent) {
+    node->do_parents([&](Hash parent) {
         if (!encountered(parent))
-          backlog.emplace(parent, parent_result);
+          backlog.emplace(nodes.get(parent), parent_result);
       });
-
-    assert(backlog.size() < 1e4);
   }
 }
 
