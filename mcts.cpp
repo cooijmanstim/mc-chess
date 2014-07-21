@@ -146,7 +146,7 @@ void Graph::backprop(Node* node, double initial_result) {
 
   std::unordered_set<Hash> encountered_nodes;
   auto encountered = [&](Hash hash) {
-    if (encountered_nodes.count(hash) > 0) {
+    if (encountered_nodes.find(hash) != encountered_nodes.end()) {
       return true;
     } else {
       encountered_nodes.insert(hash);
