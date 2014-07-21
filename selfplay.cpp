@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
   if (argc > 1)
     path_to_storage = std::string(argv[1]);
 
-  unsigned time_budget = 300;
+  unsigned time_budget = 10;
   State state;
   MCTSAgent agent(2);
 
