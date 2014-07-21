@@ -157,24 +157,12 @@ void Graph::backprop(Node* node, double initial_result) {
   std::stack<std::pair<Node*, double> > backlog;
   backlog.emplace(node, initial_result);
   
-#ifdef MC_EXPENSIVE_RUNTIME_TESTS
-  State known_win_state("rn4nr/p4N1p/8/1p4Qk/1Pp4P/8/PP1PPP1P/RNB1KBR1 b Q - 0 0");
-#endif
-
   while (!backlog.empty()) {
     std::pair<Node*, double> pair = backlog.top();
     backlog.pop();
     
     Node* node = pair.first;
     double result = pair.second;
-
-#ifdef MC_EXPENSIVE_RUNTIME_TESTS
-    //if (node->hash == NodeTable::key(known_win_state.hash)) {
-      // assertion commented out because hash collisions can cause it to fail.
-      // uncomment it to get a backtrace when the relevant test case fails.
-//      assert(result == win_value);
-    //}
-#endif
     node->update(result);
 
     double parent_result = invert_result(result);
