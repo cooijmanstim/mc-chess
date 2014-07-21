@@ -136,9 +136,7 @@ Node* Graph::select_child(Node* node, State& state, boost::mt19937& generator) {
 }
   
 // update the node and all of its ancestors.  the graph is likely to be
-// cyclic due to reversible moves.  we traverse it in a breadth-first
-// manner so that the updates run along the shortest paths to each
-// unique ancestor.
+// cyclic due to reversible moves.
 // NOTE: initial_result is from the perspective of the player who is to move in
 // the state corresponding to node.  since the stored node values are from the
 // perspective of the player who causes the node to be chosen, we have to invert
