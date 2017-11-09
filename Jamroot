@@ -1,6 +1,6 @@
 import testing ;
 
-using gcc : c++11 : "g++" : <cxxflags>-std=c++11 ;
+using gcc : c++11 : "g++" : <cxxflags>-std=c++11 <linkflags>-lboost_thread ;
 
 use-project /boost : /home/tim/src/boost_1_55_0 ;
 
