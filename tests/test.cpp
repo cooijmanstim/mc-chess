@@ -9,15 +9,15 @@
 #include <boost/format.hpp>
 #include <boost/random.hpp>
 
-#include "util.hpp"
-#include "direction.hpp"
-#include "state.hpp"
-#include "move_generation.hpp"
-#include "hash.hpp"
-#include "mcts.hpp"
-#include "mcts_agent.hpp"
-#include "notation.hpp"
-#include "targets.hpp"
+#include "../util.hpp"
+#include "../direction.hpp"
+#include "../state.hpp"
+#include "../move_generation.hpp"
+#include "../hash.hpp"
+#include "../mcts.hpp"
+#include "../mcts_agent.hpp"
+#include "../notation.hpp"
+#include "../targets.hpp"
 
 // NOTE: evaluates arguments twice
 #define BOOST_CHECK_BITBOARDS_EQUAL(a, b) \

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/assign/list_of.hpp>
+#include <boost/array.hpp>
 
 namespace pieces {
 #define PIECE_TYPES pawn, knight, bishop, rook, queen, king,
@@ -10,7 +10,7 @@ namespace pieces {
 
   const size_t cardinality = sizeof(values) / sizeof(Piece);
 
-  const std::array<char, cardinality> symbols = {
+  const boost::array<char, cardinality> symbols = {
     'p', 'n', 'b', 'r', 'q', 'k',
   };
 

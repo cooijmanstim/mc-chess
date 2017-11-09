@@ -1,5 +1,7 @@
 import testing ;
 
+using gcc : c++11 : "g++" : <cxxflags>-std=c++11 ;
+
 use-project /boost : /home/tim/src/boost_1_55_0 ;
 
 project mcchess

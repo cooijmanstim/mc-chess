@@ -64,7 +64,7 @@ Move MCTSAgent::decide() {
   throw std::runtime_error("not implemented");
 }
 
-boost::future<Move> MCTSAgent::start_decision(unsigned time_budget) {
+boost::future<Move> MCTSAgent::start_decision(size_t time_budget) {
   start_pondering();
   return boost::async([this, time_budget]() {
       boost::this_thread::sleep_for(boost::chrono::seconds(time_budget));

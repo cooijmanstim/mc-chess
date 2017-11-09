@@ -121,14 +121,14 @@ namespace castles {
       switch (rook_source) {
       case h1: return kingside;
       case a1: return queenside;
+      default: return boost::none;
       }
-      return boost::none;
     case black:
       switch (rook_source) {
       case h8: return kingside;
       case a8: return queenside;
+      default: return boost::none;
       }
-      return boost::none;
     }
     return boost::none;
   }
