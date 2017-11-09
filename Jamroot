@@ -1,21 +1,16 @@
 import testing ;
 
-using gcc : c++11 : "g++" : <cxxflags>-std=c++11 <linkflags>-lboost_thread ;
-
-use-project /boost : /home/tim/src/boost_1_55_0 ;
+using gcc : c++11 : "g++" : <cxxflags>-std=c++11 <linkflags>-lboost_system <linkflags>-lboost_thread <linkflags>-lboost_regex <linkflags>-lboost_serialization ;
 
 project mcchess
-        : requirements <library>/boost//regex
-                       <library>/boost//thread
-                       <library>/boost//serialization
-                       <cflags>"-flto=2 -ftemplate-depth=196"
+        : requirements <cflags>"-flto=2 -ftemplate-depth=256"
 ;
 
 lib game : [ glob *.cpp : main.cpp speedtest.cpp selfplay.cpp ] : <variant>debug:<define>MC_EXPENSIVE_RUNTIME_TESTS ;
 
-exe main : main.cpp game ;
 exe selfplay : selfplay.cpp game ;
 exe speedtest : speedtest.cpp game ;
+exe main : main.cpp game ;
 
 for test in [ glob tests/*.cpp ] {
     unit-test $(test:B) : $(test) game ;

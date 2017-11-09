@@ -29,18 +29,6 @@ T random_element(std::vector<T> const& elements, boost::mt19937& generator) {
 
 extern boost::normal_distribution<double> standard_normal_distribution;
 
-// serialization for std::array
-#include <boost/serialization/array.hpp>
-namespace boost {
-  namespace serialization {
-    template<class Archive, class T, size_t N>
-    void serialize(Archive & ar, std::array<T,N> & a, const unsigned int version)
-    {
-      ar & boost::serialization::make_array(a.data(), a.size());
-    }
-  }
-}
-
 inline bool file_readable(std::string path) {
   std::ifstream infile(path);
   return infile.good();

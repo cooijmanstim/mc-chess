@@ -1,5 +1,6 @@
 #include <ios>
 
+#include "util.hpp"
 #include "mcts_agent.hpp"
 
 #define fmt boost::format
@@ -13,7 +14,7 @@ int main(int argc, char* argv[]) {
   State state;
   MCTSAgent agent(2);
 
-  if (path_to_storage)
+  if (path_to_storage && file_readable(*path_to_storage))
     agent.load_yourself(*path_to_storage);
 
   agent.set_state(state);

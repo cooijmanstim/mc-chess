@@ -8,6 +8,7 @@
 #include <boost/assign/list_of.hpp>
 #include <boost/format.hpp>
 #include <boost/random.hpp>
+#include <boost/optional/optional_io.hpp>
 
 #include "../util.hpp"
 #include "../direction.hpp"

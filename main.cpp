@@ -207,7 +207,7 @@ int main(int argc, char* argv[]) {
         send_command("pong " + argv[1]);
       }},
     {"draw", [&](ARGV argv) {
-        protocol_assert(agent_color, "\"draw\" when engine not assigned to any color");
+        protocol_assert(!!agent_color, "\"draw\" when engine not assigned to any color");
         agent.set_state(game.current_state());
         if (agent.accept_draw(*agent_color))
           send_command("offer draw");
